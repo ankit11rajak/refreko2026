@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Payment Submission Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 30px;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            color: #555;
+            font-weight: bold;
+        }
+        input, select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            padding: 12px 30px;
+            border: none;
+            border-radius: 4px;
+            font-size: 16px;
+            cursor: pointer;
+            width: 100%;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 4px;
+        }
+        .success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        pre {
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        .file-info {
+            margin-top: 10px;
+            font-size: 12px;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 Payment Submission Test</h1>
+        
+        <form id="testForm">
+            <div class="form-group">
+                <label for="student_code">Student Code:</label>
+                <input type="text" id="student_code" name="student_code" value="TEST001" required>
+            </div>
+
+            <div class="form-group">
+                <label for="student_name">Student Name:</label>
+                <input type="text" id="student_name" name="student_name" value="Test Student" required>
+            </div>
+
+            <div class="form-group">
+                <label for="email">Email:</label>
+                <input type="email" id="email" name="email" value="test@skf.edu.in">
+            </div>
+
+            <div class="form-group">
+                <label for="department">Department:</label>
+                <input type="text" id="department" name="department" value="CSE">
+            </div>
+
+            <div class="form-group">
+                <label for="year">Year:</label>
+                <input type="text" id="year" name="year" value="3">
+            </div>
+
+            <div class="form-group">
+                <label for="utr_no">UTR Number:</label>
+                <input type="text" id="utr_no" name="utr_no" required>
+                <small>Will auto-generate if left empty</small>
+            </div>
+
+            <div class="form-group">
+                <label for="amount">Amount (₹):</label>
+                <input type="number" id="amount" name="amount" value="600" required>
+            </div>
+
+            <div class="form-group">
+                <label for="food_included">Food Included:</label>
+                <select id="food_included" name="food_included">
+                    <option value="0">No</option>
+                    <option value="1" selected>Yes</option>
+                </select>
+            </div>
+
+            <div class="form-group" id="food_preference_group">
+                <label for="food_preference">Food Preference:</label>
+                <select id="food_preference" name="food_preference">
+                    <option value="">Select...</option>
+                    <option value="VEG" selected>Vegetarian</option>
+                    <option value="NON-VEG">Non-Vegetarian</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="screenshot">Payment Screenshot:</label>
+                <input type="file" id="screenshot" name="screenshot" accept="image/*" required>
+                <div class="file-info" id="fileInfo"></div>
+            </div>
+
+            <button type="submit" id="submitBtn">Submit Test Payment</button>
+        </form>
+
+        <div id="result"></div>
+    </div>
+
+    <script>
+        const API_BASE = 'https://api-refresko.skf.edu.in';
+        
+        // Auto-generate UTR if empty
+        function generateUTR() {
+            const timestamp = Date.now();
+            const random = Math.floor(Math.random() * 10000);
+            return `UTR${timestamp}${random}`;
+        }
+
+        // Toggle food preference visibility
+        document.getElementById('food_included').addEventListener('change', function(e) {
+            const prefGroup = document.getElementById('food_preference_group');
+            prefGroup.style.display = e.target.value === '1' ? 'block' : 'none';
+            if (e.target.value === '0') {
+                document.getElementById('food_preference').value = '';
+            }
+        });
+
+        // Show file info when selected
+        document.getElementById('screenshot').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            const info = document.getElementById('fileInfo');
+            if (file) {
+                const sizeMB = (file.size / (1024 * 1024)).toFixed(2);
+                info.innerHTML = `📄 ${file.name} (${sizeMB} MB, ${file.type})`;
+            } else {
+                info.innerHTML = '';
+            }
+        });
+
+        // Handle form submission
+        document.getElementById('testForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const submitBtn = document.getElementById('submitBtn');
+            const resultDiv = document.getElementById('result');
+            
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Submitting...';
+            resultDiv.innerHTML = '<div class="result info">⏳ Submitting payment to database...</div>';
+
+            try {
+                // Get form data
+                const formData = new FormData(e.target);
+                
+                // Auto-generate UTR if empty
+                if (!formData.get('utr_no')) {
+                    formData.set('utr_no', generateUTR());
+                }
+                
+                // Add auto-generated IDs
+                const paymentId = `PAY${Date.now()}`;
+                const transactionId = `TXN${Date.now()}`;
+                formData.append('payment_id', paymentId);
+                formData.append('transaction_id', transactionId);
+                formData.append('payment_method', 'UPI');
+
+                console.log('Submitting with data:', {
+                    payment_id: paymentId,
+                    transaction_id: transactionId,
+                    student_code: formData.get('student_code'),
+                    utr_no: formData.get('utr_no'),
+                    amount: formData.get('amount'),
+                    food_included: formData.get('food_included'),
+                    food_preference: formData.get('food_preference'),
+                    screenshot: formData.get('screenshot')?.name
+                });
+
+                // Submit to API
+                const response = await fetch(`${API_BASE}/payments/submit`, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const result = await response.json();
+                
+                if (response.ok && result.success) {
+                    resultDiv.innerHTML = `
+                        <div class="result success">
+                            <h3>✅ Payment Submitted Successfully!</h3>
+                            <pre>${JSON.stringify(result, null, 2)}</pre>
+                            <p><strong>Next Steps:</strong></p>
+                            <ol>
+                                <li>Check phpMyAdmin: <code>SELECT * FROM payments WHERE payment_id = '${paymentId}'</code></li>
+                                <li>Check students table: <code>SELECT * FROM students WHERE student_code = '${formData.get('student_code')}'</code></li>
+                                <li>Check uploads folder: <code>~/api-refresko.skf.edu.in/uploads/payment-proofs/</code></li>
+                            </ol>
+                        </div>
+                    `;
+                } else {
+                    resultDiv.innerHTML = `
+                        <div class="result error">
+                            <h3>❌ Payment Submission Failed</h3>
+                            <p><strong>Error:</strong> ${result.message || 'Unknown error'}</p>
+                            <pre>${JSON.stringify(result, null, 2)}</pre>
+                            <p><strong>Debugging Steps:</strong></p>
+                            <ol>
+                                <li>Check PHP error log: <code>~/api-refresko.skf.edu.in/error_log</code></li>
+                                <li>Verify uploads directory exists and is writable</li>
+                                <li>Check database connection in config/env.php</li>
+                                <li>Review full error message above</li>
+                            </ol>
+                        </div>
+                    `;
+                }
+                
+            } catch (error) {
+                console.error('Test error:', error);
+                resultDiv.innerHTML = `
+                    <div class="result error">
+                        <h3>❌ Network/API Error</h3>
+                        <p><strong>Error:</strong> ${error.message}</p>
+                        <pre>${error.stack}</pre>
+                        <p><strong>Possible Causes:</strong></p>
+                        <ul>
+                            <li>API server not reachable at ${API_BASE}</li>
+                            <li>CORS headers not configured correctly</li>
+                            <li>Backend PHP error (check error_log)</li>
+                            <li>Network connection issue</li>
+                        </ul>
+                    </div>
+                `;
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Submit Test Payment';
+            }
+        });
+    </script>
+</body>
+</html>

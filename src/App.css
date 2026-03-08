@@ -1,0 +1,146 @@
+.app {
+  position: relative;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+.main-content {
+  position: relative;
+  z-index: 10;
+}
+
+/* Chromatic Aberration Effect */
+@keyframes chromatic-aberration {
+  0%, 100% {
+    text-shadow: 
+      -2px 0 var(--color-primary),
+      2px 0 cyan;
+  }
+  25% {
+    text-shadow: 
+      2px 0 var(--color-primary),
+      -2px 0 cyan;
+  }
+  50% {
+    text-shadow: 
+      -1px 0 var(--color-primary),
+      1px 0 cyan;
+  }
+  75% {
+    text-shadow: 
+      1px 0 var(--color-primary),
+      -1px 0 cyan;
+  }
+}
+
+.chromatic-text {
+  animation: chromatic-aberration 4s infinite;
+}
+
+/* Glitch Effect */
+@keyframes glitch {
+  0% {
+    transform: translate(0);
+  }
+  20% {
+    transform: translate(-2px, 2px);
+  }
+  40% {
+    transform: translate(-2px, -2px);
+  }
+  60% {
+    transform: translate(2px, 2px);
+  }
+  80% {
+    transform: translate(2px, -2px);
+  }
+  100% {
+    transform: translate(0);
+  }
+}
+
+.glitch {
+  animation: glitch 0.3s infinite;
+}
+
+/* Neon Glow */
+.neon-text {
+  text-shadow: 
+    0 0 2px var(--color-primary),
+    0 0 4px var(--color-primary),
+    0 0 10px var(--color-primary),
+    0 0 20px var(--color-primary);
+}
+
+/* Glass Effect */
+.glass {
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Stroke Text */
+.stroke-text {
+  -webkit-text-stroke: 2px var(--color-secondary);
+  color: transparent;
+}
+
+/* Skewed Button */
+.skewed-btn {
+  transform: skewX(-10deg);
+}
+
+.skewed-btn span {
+  display: inline-block;
+  transform: skewX(10deg);
+}
+
+/* Section Padding */
+section {
+  padding: 100px 5%;
+  min-height: 100vh;
+  position: relative;
+}
+
+/* Container */
+.container {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 0 20px;
+}
+
+/* Section Title */
+.section-title {
+  font-family: var(--font-heading);
+  font-size: clamp(2.5rem, 6vw, 5rem);
+  color: var(--color-primary);
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  margin-bottom: 60px;
+  position: relative;
+}
+
+.section-title::after {
+  content: '';
+  position: absolute;
+  bottom: -15px;
+  left: 0;
+  width: 100px;
+  height: 4px;
+  background: var(--color-primary);
+}
+
+/* Background Decorative Text */
+.bg-text {
+  position: absolute;
+  font-family: var(--font-accent);
+  font-size: clamp(5rem, 15vw, 15rem);
+  font-weight: 700;
+  -webkit-text-stroke: 1px rgba(255, 255, 255, 0.1);
+  color: transparent;
+  text-transform: uppercase;
+  pointer-events: none;
+  user-select: none;
+  z-index: -1;
+}

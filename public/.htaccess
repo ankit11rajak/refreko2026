@@ -1,0 +1,24 @@
+# Enable CORS for images
+<IfModule mod_headers.c>
+    Header set Access-Control-Allow-Origin "*"
+    Header set Access-Control-Allow-Methods "GET, OPTIONS"
+    Header set Access-Control-Allow-Headers "Content-Type"
+</IfModule>
+
+# Cache control - refresh every 1 minute
+<IfModule mod_headers.c>
+    # For static images like QR codes
+    <FilesMatch "\.(jpg|jpeg|png|gif|webp|svg)$">
+        # Cache for 1 minute (60 seconds)
+        Header set Cache-Control "public, max-age=60, must-revalidate"
+        # Add Expires header (1 minute from now)
+        Header set Expires "Thu, 01 Jan 1970 00:00:00 GMT"
+    </FilesMatch>
+</IfModule>
+
+# Allow serving of image files
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    # Allow direct access to image files
+    RewriteRule ^(.+\.(jpg|jpeg|png|gif|webp|svg))$ - [L]
+</IfModule>

@@ -1,0 +1,162 @@
+@import '../pages/Login.css';
+
+/* Additional styles specific to Register page */
+.register-container {
+  max-width: 650px;
+  padding: 50px 45px;
+}
+
+.register-icon {
+  font-size: 3rem;
+  filter: drop-shadow(0 0 20px rgba(255, 0, 51, 0.5));
+}
+
+.register-form {
+  gap: 30px;
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+.events-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  margin-top: 10px;
+}
+
+.event-card {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 15px 20px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.event-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 0, 51, 0.1),
+    transparent
+  );
+  transition: left 0.5s ease;
+}
+
+.event-card:hover::before {
+  left: 100%;
+}
+
+.event-card:hover {
+  border-color: rgba(255, 0, 51, 0.3);
+  background: rgba(255, 0, 51, 0.05);
+}
+
+.event-card.selected {
+  border-color: var(--color-primary);
+  background: rgba(255, 0, 51, 0.15);
+}
+
+.event-check {
+  width: 24px;
+  height: 24px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.9rem;
+  font-weight: bold;
+  transition: all 0.3s ease;
+  flex-shrink: 0;
+}
+
+.event-card.selected .event-check {
+  border-color: var(--color-primary);
+  background: var(--color-primary);
+  color: var(--color-background);
+}
+
+.event-name {
+  font-family: var(--font-body);
+  font-size: 0.95rem;
+  color: var(--color-text);
+  letter-spacing: 0.02em;
+}
+
+.terms-group {
+  margin-top: 10px;
+}
+
+.terms-group .checkbox-label {
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.terms-group .checkbox-label span {
+  color: var(--color-text-muted);
+}
+
+/* Info Box for Registration */
+.register-info {
+  background: rgba(255, 0, 51, 0.1);
+  border: 1px solid rgba(255, 0, 51, 0.3);
+  padding: 15px 20px;
+  margin-bottom: 30px;
+  font-size: 0.9rem;
+  color: var(--color-text-muted);
+  line-height: 1.6;
+}
+
+.register-info strong {
+  color: var(--color-primary);
+  font-weight: 600;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .register-container {
+    padding: 40px 30px;
+    max-width: 500px;
+  }
+
+  .form-row {
+    grid-template-columns: 1fr;
+    gap: 25px;
+  }
+
+  .events-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .event-card {
+    padding: 12px 18px;
+  }
+}
+
+@media (max-width: 480px) {
+  .register-container {
+    padding: 35px 25px;
+  }
+
+  .auth-title {
+    font-size: 1.3rem;
+  }
+
+  .event-name {
+    font-size: 0.9rem;
+  }
+}

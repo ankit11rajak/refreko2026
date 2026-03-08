@@ -1,0 +1,306 @@
+.performers {
+  min-height: 100vh;
+  padding: 100px 5%;
+  position: relative;
+  overflow: hidden;
+  background: radial-gradient(ellipse at center, rgba(255, 0, 51, 0.05), transparent 50%);
+}
+
+.performers::after {
+  content: '';
+  position: absolute;
+  bottom: 20%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 550px;
+  height: 550px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 0, 51, 0.15), transparent 70%);
+  filter: blur(120px);
+  opacity: 0.5;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.performers-header {
+  margin-bottom: 60px;
+  position: relative;
+  z-index: 10;
+}
+
+.performers-label {
+  font-family: var(--font-heading);
+  font-size: clamp(2rem, 4vw, 3rem);
+  font-weight: 700;
+  color: var(--color-primary);
+  display: block;
+  letter-spacing: 0.3em;
+}
+
+.performers-title {
+  font-family: var(--font-heading);
+  font-size: clamp(3rem, 8vw, 6rem);
+  font-weight: 300;
+  color: var(--color-secondary);
+  letter-spacing: 0.2em;
+}
+
+.performers-track-wrapper {
+  position: relative;
+}
+
+.dotted-path {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 200px;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.dotted-path svg {
+  width: 100%;
+  height: 100%;
+}
+
+.performers-scroll {
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 50px 0;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  scroll-behavior: smooth;
+}
+
+.performers-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+.performers-grid {
+  display: flex;
+  gap: 40px;
+  padding: 0 50px;
+  width: max-content;
+}
+
+.performer-card {
+  flex-shrink: 0;
+  width: 280px;
+  position: relative;
+  z-index: 10;
+}
+
+.performer-year-badge {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) scale(0.8);
+  z-index: 15;
+  font-family: var(--font-heading);
+  font-size: 3rem;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.95);
+  text-shadow: 0 0 20px rgba(255, 0, 51, 0.8),
+               0 0 40px rgba(255, 0, 51, 0.6),
+               0 4px 20px rgba(0, 0, 0, 0.8);
+  letter-spacing: 0.15em;
+  opacity: 0;
+  transition: all 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+  pointer-events: none;
+}
+
+.performer-card:hover .performer-year-badge,
+.performer-card.active .performer-year-badge {
+  opacity: 1;
+  transform: translate(-50%, -50%) scale(1);
+}
+
+.performer-image-wrapper {
+  position: relative;
+  width: 100%;
+  height: 350px;
+  overflow: hidden;
+  border-radius: 10px;
+  background: var(--color-background-light);
+}
+
+.performer-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  filter: grayscale(100%);
+  transition: all 0.5s ease;
+}
+
+.performer-card:hover .performer-image,
+.performer-card.active .performer-image {
+  filter: grayscale(0%);
+  transform: scale(1.1);
+}
+
+.performer-overlay {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 60%;
+  background: linear-gradient(to top, rgba(255, 0, 51, 0.8), transparent);
+  display: flex;
+  align-items: flex-end;
+  padding: 25px;
+  opacity: 0;
+  transform: translateY(20px);
+  transition: all 0.4s ease;
+}
+
+.performer-card:hover .performer-overlay,
+.performer-card.active .performer-overlay {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.performer-info {
+  transform: translateX(-20px);
+  opacity: 0;
+  transition: all 0.4s ease 0.1s;
+}
+
+.performer-card:hover .performer-info,
+.performer-card.active .performer-info {
+  transform: translateX(0);
+  opacity: 1;
+}
+
+.performer-name {
+  font-family: var(--font-heading);
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: var(--color-secondary);
+  margin-bottom: 5px;
+  letter-spacing: 0.05em;
+}
+
+.performer-role {
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.performers-indicator {
+  position: absolute;
+  right: 5%;
+  top: 100px;
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+}
+
+.indicator-text {
+  font-family: var(--font-body);
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.3);
+  letter-spacing: 0.3em;
+}
+
+/* Responsive */
+@media (max-width: 1024px) {
+  .performers {
+    padding: 80px 20px;
+  }
+
+  .performers-grid {
+    gap: 30px;
+    padding: 0 30px;
+  }
+
+  .performer-card {
+    width: 260px;
+  }
+}
+
+@media (max-width: 768px) {
+  .performers {
+    padding: 60px 0;
+  }
+
+  .performers-header {
+    padding: 0 20px;
+    margin-bottom: 40px;
+  }
+
+  .performers-scroll {
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding: 40px 0;
+    scroll-snap-type: x mandatory;
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .performers-grid {
+    gap: 20px;
+    padding: 0 calc(50vw - 140px);
+    justify-content: flex-start;
+  }
+
+  .performer-card {
+    width: 280px;
+    scroll-snap-align: center;
+    scroll-snap-stop: always;
+  }
+
+  .performer-image-wrapper {
+    height: 360px;
+  }
+
+  .performers-indicator {
+    display: none;
+  }
+
+  .dotted-path {
+    display: none;
+  }
+}
+
+@media (max-width: 480px) {
+  .performers {
+    padding: 60px 0;
+  }
+
+  .performers-header {
+    padding: 0 15px;
+  }
+
+  .performers-label {
+    font-size: 1.5rem;
+  }
+
+  .performers-title {
+    font-size: 2.5rem;
+  }
+
+  .performers-grid {
+    gap: 15px;
+    padding: 0 calc(50vw - 130px);
+  }
+
+  .performer-card {
+    width: 260px;
+  }
+
+  .performer-image-wrapper {
+    height: 340px;
+  }
+
+  .performer-year-badge {
+    font-size: 2.5rem;
+  }
+
+  .performer-name {
+    font-size: 1.1rem;
+  }
+
+  .performer-role {
+    font-size: 0.85rem;
+  }
+}

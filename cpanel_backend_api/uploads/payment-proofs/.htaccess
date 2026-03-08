@@ -1,0 +1,24 @@
+# Allow access to payment proof images
+<FilesMatch "\.(jpg|jpeg|png|webp)$">
+    Order Allow,Deny
+    Allow from all
+    
+    # Set CORS headers for cross-origin image loading
+    Header set Access-Control-Allow-Origin "*"
+    Header set Access-Control-Allow-Methods "GET, OPTIONS"
+    Header set Access-Control-Allow-Headers "*"
+    
+    # Cache control - refresh every 1 minute
+    Header set Cache-Control "public, max-age=60, must-revalidate"
+    # Force revalidation after 1 minute
+    Header set Expires "Thu, 01 Jan 1970 00:00:00 GMT"
+</FilesMatch>
+
+# Prevent directory listing
+Options -Indexes
+
+# Prevent access to .htaccess itself
+<Files ".htaccess">
+    Order Allow,Deny
+    Deny from all
+</Files>

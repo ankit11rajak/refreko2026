@@ -1,0 +1,224 @@
+.admin-dashboard {
+  min-height: 100vh;
+  background: var(--color-background);
+  position: relative;
+  overflow-x: hidden;
+}
+
+/* Header */
+.admin-header {
+  background: rgba(10, 10, 10, 0.95);
+  border-bottom: 1px solid rgba(255, 0, 51, 0.2);
+  padding: 20px 5%;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  backdrop-filter: blur(20px);
+}
+
+.admin-header-content {
+  display: grid;
+  grid-template-columns: 220px 1fr 220px;
+  align-items: center;
+  max-width: 1600px;
+  margin: 0 auto;
+  gap: 20px;
+}
+
+.admin-logo a {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-family: var(--font-heading);
+  text-decoration: none;
+}
+
+.admin-logo .logo-main {
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: var(--color-secondary);
+  letter-spacing: 0.1em;
+}
+
+.admin-logo .logo-year {
+  font-size: 1rem;
+  color: var(--color-primary);
+  text-shadow: 0 0 10px var(--color-primary);
+}
+
+.admin-title {
+  text-align: center;
+  justify-self: center;
+}
+
+.admin-title h1 {
+  font-family: var(--font-heading);
+  font-size: 1.8rem;
+  color: var(--color-primary);
+  letter-spacing: 0.15em;
+  margin-bottom: 5px;
+}
+
+.admin-title p {
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+  color: var(--color-text-muted);
+  letter-spacing: 0.1em;
+}
+
+.admin-logout-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  background: transparent;
+  border: 1px solid rgba(255, 0, 51, 0.5);
+  color: var(--color-primary);
+  font-family: var(--font-body);
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  padding: 8px 14px;
+  transition: all 0.3s ease;
+  justify-self: end;
+  width: auto;
+  max-width: fit-content;
+}
+
+.admin-logout-btn svg {
+  width: 14px;
+  height: 14px;
+}
+
+.admin-logout-btn:hover {
+  background: var(--color-primary);
+  color: var(--color-background);
+  border-color: var(--color-primary);
+}
+
+/* Navigation Tabs */
+.admin-nav {
+  background: rgba(5, 5, 5, 0.8);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  padding: 0 5%;
+  position: sticky;
+  top: 80px;
+  z-index: 90;
+  backdrop-filter: blur(10px);
+}
+
+.admin-nav-container {
+  max-width: 1600px;
+  margin: 0 auto;
+  display: flex;
+  gap: 5px;
+}
+
+.nav-tab {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: transparent;
+  border: none;
+  border-bottom: 3px solid transparent;
+  color: var(--color-text-muted);
+  font-family: var(--font-body);
+  font-size: 0.95rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  padding: 20px 30px;
+  transition: all 0.3s ease;
+  position: relative;
+}
+
+.nav-tab svg {
+  width: 20px;
+  height: 20px;
+}
+
+.nav-tab:hover {
+  color: var(--color-secondary);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.nav-tab.active {
+  color: var(--color-primary);
+  border-bottom-color: var(--color-primary);
+  background: rgba(255, 0, 51, 0.05);
+}
+
+/* Content */
+.admin-content {
+  padding: 40px 5%;
+  max-width: 1600px;
+  margin: 0 auto;
+  position: relative;
+  z-index: 10;
+}
+
+/* Responsive */
+@media (max-width: 1024px) {
+  .admin-header-content {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .admin-title {
+    order: 1;
+    margin-bottom: 8px;
+  }
+
+  .admin-logo {
+    justify-self: center;
+  }
+
+  .admin-logout-btn {
+    justify-self: center;
+  }
+
+  .admin-nav {
+    top: 120px;
+  }
+}
+
+@media (max-width: 768px) {
+  .admin-header {
+    padding: 15px 20px;
+  }
+
+  .admin-title h1 {
+    font-size: 1.3rem;
+  }
+
+  .admin-title p {
+    font-size: 0.8rem;
+  }
+
+  .admin-logout-btn {
+    padding: 7px 12px;
+    font-size: 0.72rem;
+  }
+
+  .admin-nav {
+    padding: 0 20px;
+    overflow-x: auto;
+  }
+
+  .admin-nav-container {
+    min-width: max-content;
+  }
+
+  .nav-tab {
+    padding: 15px 20px;
+    font-size: 0.85rem;
+  }
+
+  .nav-tab svg {
+    width: 18px;
+    height: 18px;
+  }
+
+  .admin-content {
+    padding: 30px 20px;
+  }
+}

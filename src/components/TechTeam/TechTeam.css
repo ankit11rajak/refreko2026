@@ -1,0 +1,341 @@
+.tech-team {
+  min-height: 100vh;
+  padding: 100px 5%;
+  position: relative;
+  overflow: hidden;
+}
+
+.tech-team::after {
+  content: '';
+  position: absolute;
+  bottom: 20%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 550px;
+  height: 550px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 0, 51, 0.15), transparent 70%);
+  filter: blur(120px);
+  opacity: 0.5;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Header */
+.tech-team-header {
+  margin-bottom: 60px;
+  position: relative;
+  z-index: 10;
+}
+
+.tech-team-label {
+  font-family: var(--font-heading);
+  font-size: clamp(2rem, 4vw, 3rem);
+  font-weight: 700;
+  color: var(--color-primary);
+  display: block;
+  letter-spacing: 0.3em;
+}
+
+.tech-team-title {
+  font-family: var(--font-heading);
+  font-size: clamp(3rem, 8vw, 6rem);
+  font-weight: 300;
+  color: var(--color-secondary);
+  letter-spacing: 0.2em;
+}
+
+/* Track & Dotted Path */
+.tech-team-track-wrapper {
+  position: relative;
+}
+
+.tech-dotted-path {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 200px;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.tech-dotted-path svg {
+  width: 100%;
+  height: 100%;
+}
+
+/* Grid Layout */
+.tech-team-scroll {
+  padding: 50px 0;
+}
+
+.tech-team-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 20px;
+}
+
+/* Card */
+.team-member-card {
+  position: relative;
+  z-index: 10;
+}
+
+.member-role-badge {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) scale(0.8);
+  z-index: 15;
+  font-family: var(--font-heading);
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.95);
+  text-shadow: 0 0 20px rgba(255, 0, 51, 0.8),
+               0 0 40px rgba(255, 0, 51, 0.6),
+               0 4px 20px rgba(0, 0, 0, 0.8);
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  opacity: 0;
+  transition: all 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+  pointer-events: none;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.team-member-card:hover .member-role-badge,
+.team-member-card.active .member-role-badge {
+  opacity: 1;
+  transform: translate(-50%, -50%) scale(1);
+}
+
+.member-image-wrapper {
+  position: relative;
+  width: 100%;
+  height: 280px;
+  overflow: hidden;
+  border-radius: 10px;
+  background: var(--color-background-light, #111);
+}
+
+/* Avatar placeholder (since no photos) */
+.member-avatar-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  filter: grayscale(100%);
+  transition: all 0.5s ease;
+}
+
+.team-member-card:hover .member-avatar-placeholder,
+.team-member-card.active .member-avatar-placeholder {
+  filter: grayscale(0%);
+  transform: scale(1.05);
+}
+
+.avatar-initial {
+  font-family: var(--font-heading);
+  font-size: 5rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  z-index: 2;
+  text-shadow: 0 0 40px currentColor;
+  transition: all 0.5s ease;
+}
+
+.team-member-card:hover .avatar-initial,
+.team-member-card.active .avatar-initial {
+  text-shadow: 0 0 60px currentColor, 0 0 100px currentColor;
+  transform: scale(1.1);
+}
+
+/* Member photo (when available) */
+.member-photo {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 10px;
+  filter: grayscale(100%);
+  transition: all 0.5s ease;
+  position: relative;
+  z-index: 2;
+}
+
+.team-member-card:hover .member-photo,
+.team-member-card.active .member-photo {
+  filter: grayscale(0%);
+  transform: scale(1.05);
+}
+
+/* Hex decoration inside avatar */
+.avatar-hex-bg {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 15px;
+  opacity: 0.3;
+  pointer-events: none;
+}
+
+.hex {
+  width: 40px;
+  height: 40px;
+  border: 1px solid rgba(255, 0, 51, 0.15);
+  clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+  animation: hexPulse 3s ease-in-out infinite;
+}
+
+@keyframes hexPulse {
+  0%, 100% { opacity: 0.2; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(1.1); }
+}
+
+/* Overlay on hover */
+.member-overlay {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 60%;
+  background: linear-gradient(to top, rgba(255, 0, 51, 0.8), transparent);
+  display: flex;
+  align-items: flex-end;
+  padding: 25px;
+  opacity: 0;
+  transform: translateY(20px);
+  transition: all 0.4s ease;
+}
+
+.team-member-card:hover .member-overlay,
+.team-member-card.active .member-overlay {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.member-info {
+  transform: translateX(-20px);
+  opacity: 0;
+  transition: all 0.4s ease 0.1s;
+}
+
+.team-member-card:hover .member-info,
+.team-member-card.active .member-info {
+  transform: translateX(0);
+  opacity: 1;
+}
+
+.member-name {
+  font-family: var(--font-heading);
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: var(--color-secondary);
+  margin-bottom: 5px;
+  letter-spacing: 0.05em;
+}
+
+.member-role-text {
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+/* Side indicator */
+.tech-team-indicator {
+  position: absolute;
+  right: 5%;
+  top: 100px;
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+}
+
+.tech-indicator-text {
+  font-family: var(--font-body);
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.3);
+  letter-spacing: 0.3em;
+}
+
+/* Responsive */
+@media (max-width: 1200px) {
+  .tech-team-grid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+  }
+
+  .member-image-wrapper {
+    height: 260px;
+  }
+}
+
+@media (max-width: 768px) {
+  .tech-team {
+    padding: 60px 4%;
+  }
+
+  .tech-team-header {
+    margin-bottom: 40px;
+  }
+
+  .tech-team-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 15px;
+  }
+
+  .member-image-wrapper {
+    height: 240px;
+  }
+
+  .tech-team-indicator {
+    display: none;
+  }
+
+  .tech-dotted-path {
+    display: none;
+  }
+}
+
+@media (max-width: 480px) {
+  .tech-team {
+    padding: 60px 3%;
+  }
+
+  .tech-team-label {
+    font-size: 1.5rem;
+  }
+
+  .tech-team-title {
+    font-size: 2.5rem;
+  }
+
+  .tech-team-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+  }
+
+  .member-image-wrapper {
+    height: 200px;
+  }
+
+  .member-role-badge {
+    font-size: 0.65rem;
+  }
+
+  .member-name {
+    font-size: 1rem;
+  }
+
+  .member-role-text {
+    font-size: 0.8rem;
+  }
+
+  .avatar-initial {
+    font-size: 3rem;
+  }
+}

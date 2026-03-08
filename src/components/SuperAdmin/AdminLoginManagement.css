@@ -1,0 +1,166 @@
+.admin-login-management {
+  width: 100%;
+}
+
+.admin-create-form {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 20px;
+  margin-bottom: 24px;
+}
+
+.admin-create-form .form-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  margin-bottom: 14px;
+}
+
+.admin-create-form .form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.admin-create-form .form-group label {
+  font-family: var(--font-body);
+  font-size: 0.82rem;
+  color: var(--color-text-muted);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.admin-create-form .form-group input {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: var(--color-text);
+  font-family: var(--font-body);
+  font-size: 0.92rem;
+  padding: 11px 12px;
+  transition: all 0.3s ease;
+}
+
+.admin-create-form .form-group input:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px rgba(255, 0, 51, 0.2);
+}
+
+.form-message {
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+  margin-bottom: 12px;
+}
+
+.form-message.error {
+  color: var(--color-primary);
+}
+
+.form-message.success {
+  color: #00ff66;
+}
+
+.create-admin-btn {
+  background: var(--color-primary);
+  border: 1px solid var(--color-primary);
+  color: var(--color-background);
+  padding: 10px 16px;
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  transition: all 0.3s ease;
+}
+
+.create-admin-btn:hover {
+  background: transparent;
+  color: var(--color-primary);
+}
+
+.admin-table-container {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  overflow-x: auto;
+}
+
+.admin-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 900px;
+}
+
+.admin-table thead {
+  background: rgba(255, 0, 51, 0.1);
+}
+
+.admin-table th {
+  color: var(--color-primary);
+  font-family: var(--font-body);
+  font-size: 0.82rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 14px 12px;
+  text-align: left;
+  border-bottom: 1px solid rgba(255, 0, 51, 0.3);
+}
+
+.admin-table td {
+  color: var(--color-text);
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+  padding: 14px 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.admin-table tbody tr:hover {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.admin-id {
+  font-family: var(--font-mono);
+  color: var(--color-primary);
+}
+
+.table-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.action-btn {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: var(--color-text-muted);
+  font-family: var(--font-body);
+  font-size: 0.8rem;
+  padding: 6px 10px;
+  transition: all 0.3s ease;
+}
+
+.action-btn.toggle:hover {
+  border-color: #00e5ff;
+  color: #00e5ff;
+}
+
+.action-btn.reset:hover {
+  border-color: #ffa500;
+  color: #ffa500;
+}
+
+.action-btn.delete:hover {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+.empty-state {
+  padding: 35px 20px;
+  text-align: center;
+  color: var(--color-text-muted);
+}
+
+@media (max-width: 992px) {
+  .admin-create-form .form-row {
+    grid-template-columns: 1fr;
+  }
+}

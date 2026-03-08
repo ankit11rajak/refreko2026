@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Payment Diagnostic Tool</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            padding: 20px;
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 24px;
+            text-align: center;
+        }
+        .status {
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            font-size: 14px;
+        }
+        .status.testing {
+            background: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeaa7;
+        }
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .status.info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        button {
+            width: 100%;
+            padding: 15px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-bottom: 10px;
+        }
+        button:active {
+            background: #5568d3;
+        }
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        .result {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 15px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .result pre {
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        .test-item {
+            display: flex;
+            align-items: center;
+            padding: 12px;
+            background: #f8f9fa;
+            border-radius: 6px;
+            margin-bottom: 10px;
+        }
+        .test-icon {
+            font-size: 24px;
+            margin-right: 12px;
+        }
+        .test-text {
+            flex: 1;
+        }
+        .test-title {
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 4px;
+        }
+        .test-desc {
+            font-size: 12px;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 Payment System Diagnostic</h1>
+        
+        <div id="statusContainer"></div>
+        
+        <button onclick="runFullDiagnostic()" id="runBtn">
+            🚀 Run Full Diagnostic
+        </button>
+        
+        <button onclick="testPaymentSubmit()" id="testPaymentBtn">
+            💳 Test Payment Submission
+        </button>
+        
+        <button onclick="clearResults()" style="background: #6c757d;">
+            🗑️ Clear Results
+        </button>
+        
+        <div id="results"></div>
+    </div>
+
+    <script>
+        const API_BASE = 'https://api-refresko.skf.edu.in';
+        
+        function addStatus(message, type = 'info') {
+            const container = document.getElementById('statusContainer');
+            const status = document.createElement('div');
+            status.className = `status ${type}`;
+            status.innerHTML = message;
+            container.appendChild(status);
+            
+            // Auto-scroll to bottom
+            status.scrollIntoView({ behavior: 'smooth' });
+        }
+        
+        function clearResults() {
+            const container = document.getElementById('statusContainer');
+            const results = document.getElementById('results');
+            container.innerHTML = '';
+            results.innerHTML = '';
+        }
+        
+        function showResult(title, data, isError = false) {
+            const results = document.getElementById('results');
+            const result = document.createElement('div');
+            result.className = 'result';
+            result.innerHTML = `<strong>${title}</strong><pre>${JSON.stringify(data, null, 2)}</pre>`;
+            result.style.borderLeft = isError ? '4px solid #dc3545' : '4px solid #28a745';
+            results.appendChild(result);
+            result.scrollIntoView({ behavior: 'smooth' });
+        }
+        
+        async function runFullDiagnostic() {
+            clearResults();
+            const btn = document.getElementById('runBtn');
+            btn.disabled = true;
+            btn.textContent = '⏳ Running diagnostics...';
+            
+            addStatus('🔍 Starting diagnostic...', 'testing');
+            
+            // Test 1: Check API connectivity
+            addStatus('📡 Test 1: Checking API connectivity...', 'testing');
+            try {
+                const response = await fetch(`${API_BASE}/config/active`);
+                const data = await response.json();
+                
+                if (response.ok) {
+                    addStatus('✅ API is reachable and responding', 'success');
+                    showResult('API Response', data);
+                } else {
+                    addStatus('❌ API returned error: ' + (data.message || response.status), 'error');
+                    showResult('API Error', data, true);
+                }
+            } catch (error) {
+                addStatus('❌ Cannot reach API: ' + error.message, 'error');
+                showResult('Network Error', { error: error.message }, true);
+            }
+            
+            // Test 2: Check backend version
+            addStatus('🔧 Test 2: Checking backend code version...', 'testing');
+            try {
+                const response = await fetch(`${API_BASE}/payments/submit`, {
+                    method: 'POST',
+                    body: new FormData()
+                });
+                const data = await response.json();
+                
+                // Check if error message is specific (new version) or generic (old version)
+                const errorMsg = data.message || '';
+                if (errorMsg.includes('student_code is required') || 
+                    errorMsg.includes('student_name is required')) {
+                    addStatus('✅ Backend has NEW CODE (specific validation errors)', 'success');
+                    showResult('Backend Version', { status: 'NEW', message: errorMsg });
+                } else if (errorMsg.includes('Missing required payment fields')) {
+                    addStatus('⚠️ Backend has OLD CODE (generic validation errors)', 'error');
+                    addStatus('🔥 ACTION NEEDED: Upload new PHP files to cPanel!', 'error');
+                    showResult('Backend Version', { status: 'OLD', message: errorMsg }, true);
+                } else {
+                    addStatus('❓ Unknown backend version', 'info');
+                    showResult('Backend Response', data);
+                }
+            } catch (error) {
+                addStatus('❌ Backend check failed: ' + error.message, 'error');
+                showResult('Backend Check Error', { error: error.message }, true);
+            }
+            
+            // Test 3: Check uploads directory
+            addStatus('📁 Test 3: Checking uploads directory...', 'testing');
+            try {
+                const testUrl = `${API_BASE}/uploads/payment-proofs/.htaccess`;
+                const response = await fetch(testUrl, { method: 'HEAD' });
+                
+                if (response.status === 403 || response.status === 200) {
+                    addStatus('✅ Uploads directory exists and is configured', 'success');
+                } else if (response.status === 404) {
+                    addStatus('❌ Uploads directory not found', 'error');
+                    addStatus('🔥 ACTION: Create folder in cPanel: uploads/payment-proofs/', 'error');
+                } else {
+                    addStatus('❓ Uploads directory status unclear: ' + response.status, 'info');
+                }
+            } catch (error) {
+                addStatus('⚠️ Could not check uploads directory', 'info');
+            }
+            
+            // Test 4: Check localStorage database
+            addStatus('💾 Test 4: Checking localStorage...', 'testing');
+            const studentProfile = localStorage.getItem('studentProfile');
+            const studentId = localStorage.getItem('studentId');
+            
+            if (studentProfile && studentId) {
+                addStatus('✅ Student profile found in localStorage', 'success');
+                try {
+                    const profile = JSON.parse(studentProfile);
+                    showResult('Student Profile', profile);
+                } catch {}
+            } else {
+                addStatus('⚠️ No student profile in localStorage', 'info');
+                addStatus('ℹ️ You may need to complete profile setup first', 'info');
+            }
+            
+            // Test 5: Check payment submissions in localStorage
+            addStatus('💳 Test 5: Checking payment history...', 'testing');
+            const payments = localStorage.getItem('paymentSubmissions');
+            
+            if (payments) {
+                try {
+                    const parsed = JSON.parse(payments);
+                    addStatus(`📊 Found ${parsed.length} payment(s) in localStorage`, 'info');
+                    showResult('Payment History (localStorage)', parsed);
+                } catch {}
+            } else {
+                addStatus('ℹ️ No payments in localStorage', 'info');
+            }
+            
+            // Final summary
+            addStatus('', 'info');
+            addStatus('✅ Diagnostic complete!', 'success');
+            
+            btn.disabled = false;
+            btn.textContent = '🔄 Run Again';
+        }
+        
+        async function testPaymentSubmit() {
+            clearResults();
+            const btn = document.getElementById('testPaymentBtn');
+            btn.disabled = true;
+            btn.textContent = '⏳ Testing payment...';
+            
+            addStatus('💳 Starting payment submission test...', 'testing');
+            
+            // Create test data
+            const formData = new FormData();
+            formData.append('student_code', 'TEST' + Date.now());
+            formData.append('student_name', 'Test Student');
+            formData.append('email', 'test@example.com');
+            formData.append('department', 'CSE');
+            formData.append('year', '3');
+            formData.append('utr_no', 'UTR' + Date.now());
+            formData.append('payment_id', 'PAY' + Date.now());
+            formData.append('transaction_id', 'TXN' + Date.now());
+            formData.append('amount', '600');
+            formData.append('payment_method', 'UPI');
+            formData.append('food_included', '1');
+            formData.append('food_preference', 'VEG');
+            
+            // Create a dummy image file
+            const canvas = document.createElement('canvas');
+            canvas.width = 100;
+            canvas.height = 100;
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = '#ff0000';
+            ctx.fillRect(0, 0, 100, 100);
+            ctx.fillStyle = '#ffffff';
+            ctx.font = '20px Arial';
+            ctx.fillText('TEST', 25, 55);
+            
+            canvas.toBlob(blob => {
+                formData.append('screenshot', blob, 'test-screenshot.jpg');
+                
+                submitTest(formData, btn);
+            }, 'image/jpeg');
+        }
+        
+        async function submitTest(formData, btn) {
+            try {
+                addStatus('📤 Submitting test payment to API...', 'testing');
+                
+                const response = await fetch(`${API_BASE}/payments/submit`, {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok && data.success) {
+                    addStatus('✅ SUCCESS! Payment stored in database!', 'success');
+                    addStatus('✅ Backend code is working correctly!', 'success');
+                    addStatus('ℹ️ Check in Super Admin dashboard to confirm', 'info');
+                    showResult('Payment Submission Success', data);
+                } else {
+                    addStatus('❌ Payment submission failed', 'error');
+                    addStatus('Error: ' + (data.message || 'Unknown error'), 'error');
+                    
+                    if (data.message && data.message.includes('Missing required payment fields')) {
+                        addStatus('🔥 OLD BACKEND CODE DETECTED!', 'error');
+                        addStatus('🔥 Upload new PHP files to cPanel immediately!', 'error');
+                    } else if (data.message && data.message.includes('Upload directory not writable')) {
+                        addStatus('🔥 UPLOADS DIRECTORY ISSUE!', 'error');
+                        addStatus('Fix: chmod 755 uploads/payment-proofs/', 'error');
+                    }
+                    
+                    showResult('Payment Submission Error', data, true);
+                }
+            } catch (error) {
+                addStatus('❌ Network error: ' + error.message, 'error');
+                showResult('Network Error', { error: error.message, stack: error.stack }, true);
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '💳 Test Payment Submission';
+            }
+        }
+        
+        // Auto-run on load
+        window.addEventListener('load', () => {
+            addStatus('📱 Payment Diagnostic Tool Ready', 'info');
+            addStatus('👇 Tap "Run Full Diagnostic" to start', 'info');
+        });
+    </script>
+</body>
+</html>
