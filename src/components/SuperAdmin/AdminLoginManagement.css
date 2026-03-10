@@ -139,8 +139,8 @@
 }
 
 .action-btn.toggle:hover {
-  border-color: #7A1FA2;
-  color: #7A1FA2;
+  border-color: #E53935;
+  color: #E53935;
 }
 
 .action-btn.reset:hover {
@@ -164,3 +164,4 @@
     grid-template-columns: 1fr;
   }
 }
+

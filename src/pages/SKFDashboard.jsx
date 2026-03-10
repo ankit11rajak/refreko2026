@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import QRCode from 'qrcode'
 import md5 from 'blueimp-md5'
-import { House, Ticket, ReceiptText, LogOut, CreditCard, ShieldCheck } from 'lucide-react'
+import { House, Ticket, ReceiptText, LogOut, ShieldCheck } from 'lucide-react'
 import { cpanelApi } from '../lib/cpanelApi'
 import { getActivePaymentOption, loadPaymentConfig } from '../lib/paymentConfig'
 import { loadPaymentConfigWithApi } from '../lib/paymentConfigApi'
@@ -590,7 +590,7 @@ const SKFDashboard = () => {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.2 }}
                   >
-                    <div className="stat-icon"><CreditCard size={26} strokeWidth={2} /></div>
+                    <div className="stat-icon"><ReceiptText size={26} strokeWidth={2} /></div>
                     <div className="stat-content">
                       <span className="stat-label">Payment Status</span>
                       <span className={`stat-value ${isPaymentApproved ? 'approved' : isPaymentDeclined ? 'declined' : 'pending'}`}>
@@ -688,7 +688,7 @@ const SKFDashboard = () => {
                       whileHover={{ scale: 1.02, y: -5 }}
                       transition={{ duration: 0.3 }}
                     >
-                      <div className="action-icon"><CreditCard size={24} strokeWidth={2} /></div>
+                      <div className="action-icon"><ReceiptText size={24} strokeWidth={2} /></div>
                       <h3>Contribute to Fest</h3>
                       <p>
                         Complete your registration by making the fest payment.

@@ -34,27 +34,29 @@
 .logo {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
   font-family: var(--font-heading);
-  font-size: 1.5rem;
+  font-size: 1.2rem;
   min-width: 0;
   position: relative;
   z-index: 2;
+  margin-top: 10px;
+  margin-left: 10px;
 }
 
 .logo-icons-row {
   display: inline-flex;
   align-items: center;
   gap: 12px;
-  padding: 10px 16px;
+  padding: 8px 14px;
   border-radius: 8px;
   border: 1px solid rgba(255, 255, 255, 0.22);
   background: rgba(255, 255, 255, 0.06);
 }
 
 .brand-logo-img {
-  width: 64px;
-  height: 64px;
+  width: 40px;
+  height: 40px;
   object-fit: contain;
   filter: drop-shadow(0 0 6px rgba(255, 255, 255, 0.25));
 }
@@ -74,6 +76,10 @@
   font-weight: 300;
   text-shadow: 0 0 14px rgba(255, 193, 7, 0.35);
   white-space: nowrap;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 50px;
 }
 
 .nav-links-glass-box {
@@ -187,6 +193,8 @@
   font-weight: 600;
   letter-spacing: 0.1em;
   padding: 12px 30px;
+  border-radius: 8px;
+  margin-right: 20px;
   transition: all 0.3s ease;
 }
 
@@ -207,6 +215,7 @@
   min-width: 180px;
   background: linear-gradient(135deg, rgba(122, 31, 162, 0.35), rgba(229, 57, 53, 0.28), rgba(26, 26, 26, 0.95));
   border: 1px solid rgba(229, 57, 53, 0.35);
+  border-radius: 8px;
   backdrop-filter: blur(12px);
   z-index: 1200;
   box-shadow: 0 10px 30px rgba(229, 57, 53, 0.2);

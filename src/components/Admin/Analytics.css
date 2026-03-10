@@ -507,7 +507,7 @@
 }
 
 .bar-fill.year {
-  background: linear-gradient(90deg, #7A1FA2, rgba(122, 31, 162, 0.6));
+  background: linear-gradient(90deg, #FFC107, rgba(255, 193, 7, 0.6));
 }
 
 .bar-fill.event {
@@ -925,7 +925,7 @@
 }
 
 .summary-stat.expected {
-  border-left-color: #7A1FA2;
+  border-left-color: #E53935;
 }
 
 .summary-stat.potential {

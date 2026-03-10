@@ -309,8 +309,8 @@
 }
 
 .event-count {
-  background: rgba(122, 31, 162, 0.2);
-  color: #7A1FA2;
+  background: rgba(229, 57, 53, 0.2);
+  color: #E53935;
   padding: 4px 10px;
   border-radius: 12px;
   font-size: 0.8rem;
@@ -344,9 +344,9 @@
 }
 
 .edit-amount-btn:hover {
-  background: rgba(122, 31, 162, 0.2);
-  border-color: #7A1FA2;
-  color: #7A1FA2;
+  background: rgba(229, 57, 53, 0.2);
+  border-color: #E53935;
+  color: #E53935;
 }
 
 .no-results {
@@ -673,3 +673,4 @@
     width: 100%;
   }
 }
+

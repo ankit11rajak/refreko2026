@@ -281,7 +281,7 @@
 }
 
 .stat-card.payment-stat {
-  border-color: rgba(122, 31, 162, 0.2);
+  border-color: rgba(255, 193, 7, 0.2);
 }
 
 .stat-card.food-stat {
@@ -293,7 +293,7 @@
 }
 
 .stat-card.session-stat {
-  border-color: rgba(122, 31, 162, 0.2);
+  border-color: rgba(229, 57, 53, 0.28);
 }
 
 .stat-icon {
@@ -303,11 +303,40 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  width: 60px;
+  height: 60px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.03);
 }
 
 .stat-icon svg {
   width: 1.8rem;
   height: 1.8rem;
+}
+
+.stat-card.payment-stat .stat-icon {
+  background: rgba(255, 193, 7, 0.14);
+  border-color: rgba(255, 193, 7, 0.35);
+  color: #FFC107;
+}
+
+.stat-card.payment-stat .stat-icon svg {
+  color: #FFC107 !important;
+  stroke: #FFC107 !important;
+  fill: none !important;
+}
+
+.stat-card.gate-stat .stat-icon {
+  background: rgba(255, 193, 7, 0.14);
+  border-color: rgba(255, 193, 7, 0.35);
+  color: #FFC107;
+}
+
+.stat-card.session-stat .stat-icon {
+  background: rgba(229, 57, 53, 0.14);
+  border-color: rgba(229, 57, 53, 0.35);
+  color: #E53935;
 }
 
 .stat-content {
@@ -333,7 +362,7 @@
 }
 
 .stat-value.approved {
-  color: #FFC107;
+  color: #4CAF50;
   font-weight: bold;
 }
 
@@ -384,15 +413,19 @@
   justify-content: space-between;
   align-items: center;
   margin-bottom: 25px;
-  padding-bottom: 15px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  padding: 18px 20px;
+  border-bottom: 1px solid rgba(229, 57, 53, 0.35);
+  background: linear-gradient(90deg, rgba(18, 18, 18, 0.92), rgba(229, 57, 53, 0.16), rgba(18, 18, 18, 0.92));
+  border-radius: 8px;
 }
 
 .card-header h2 {
   font-family: var(--font-heading);
   font-size: 1.3rem;
-  color: var(--color-text);
+  color: #FFE082;
   letter-spacing: 0.05em;
+  font-weight: 700;
+  text-shadow: 0 0 16px rgba(229, 57, 53, 0.25);
 }
 
 .status-badge {
@@ -482,7 +515,7 @@
 /* Action Cards */
 .action-cards {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
   gap: 25px;
   margin-bottom: 30px;
 }
@@ -1504,7 +1537,7 @@
   border-radius: 999px;
   border: 1px solid rgba(229, 57, 53, 0.65);
   padding: 11px 18px;
-  background: linear-gradient(135deg, #E53935, #7A1FA2);
+  background: linear-gradient(135deg, #E53935, #FFC107);
   color: #ffffff;
   font-weight: 700;
   letter-spacing: 0.04em;
@@ -1513,7 +1546,7 @@
 
 .receipt-btn-download:hover {
   transform: translateY(-2px);
-  background: linear-gradient(135deg, #E53935, #7A1FA2);
+  background: linear-gradient(135deg, #F05448, #FFD54F);
   box-shadow: 0 14px 30px rgba(229, 57, 53, 0.35);
 }
 
@@ -1749,7 +1782,7 @@
   align-items: center;
   padding: 4px 10px;
   border-radius: 999px;
-  border: 1px solid rgba(122, 31, 162, 0.5);
+  border: 1px solid rgba(229, 57, 53, 0.5);
   background: rgba(229, 57, 53, 0.12);
   color: #E53935;
   font-family: 'Courier New', monospace;
@@ -1807,6 +1840,32 @@ body {
     min-height: 44px;
     touch-action: manipulation;
   }
+}
+
+/* Final override: keep Payment Status card aligned with other stat cards (no purple bleed) */
+.home-section .quick-stats .stat-card.payment-stat {
+  background: rgba(26, 26, 26, 0.88) !important;
+  border-color: rgba(255, 255, 255, 0.12) !important;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.2) !important;
+}
+
+.home-section .quick-stats .stat-card.payment-stat:hover {
+  background: rgba(26, 26, 26, 0.95) !important;
+  border-color: rgba(229, 57, 53, 0.4) !important;
+  box-shadow: 0 18px 36px rgba(229, 57, 53, 0.2) !important;
+}
+
+.home-section .quick-stats .stat-card.payment-stat .stat-icon {
+  background: rgba(255, 193, 7, 0.14) !important;
+  border-color: rgba(255, 193, 7, 0.35) !important;
+  color: #FFC107 !important;
+}
+
+.home-section .quick-stats .stat-card.payment-stat .stat-icon svg,
+.home-section .quick-stats .stat-card.payment-stat .stat-icon svg * {
+  color: #FFC107 !important;
+  stroke: #FFC107 !important;
+  fill: none !important;
 }
 
 @media (max-width: 1024px) {
@@ -2594,7 +2653,7 @@ body {
   justify-content: center;
   gap: 10px;
   padding: 14px 24px;
-  background: linear-gradient(135deg, #7A1FA2 0%, #7A1FA2 100%);
+  background: linear-gradient(135deg, #E53935 0%, #FFC107 100%);
   color: white;
   border: none;
   border-radius: 8px;
@@ -2603,13 +2662,13 @@ body {
   font-weight: 600;
   cursor: pointer;
   transition: all 0.3s ease;
-  box-shadow: 0 4px 15px rgba(122, 31, 162, 0.3);
+  box-shadow: 0 4px 15px rgba(229, 57, 53, 0.3);
 }
 
 .google-wallet-btn:hover:not(:disabled) {
-  background: linear-gradient(135deg, #7A1FA2 0%, #7A1FA2 100%);
+  background: linear-gradient(135deg, #F05448 0%, #FFD54F 100%);
   transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(122, 31, 162, 0.4);
+  box-shadow: 0 6px 20px rgba(229, 57, 53, 0.4);
 }
 
 .google-wallet-btn:active:not(:disabled) {

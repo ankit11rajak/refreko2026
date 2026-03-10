@@ -17,7 +17,13 @@ const normalizeApprovalStatus = (value) => {
   const normalized = String(value).trim().toLowerCase()
   if (normalized === 'approved') return 'approved'
   if (normalized === 'declined') return 'declined'
+  if (normalized === 'waiting for approval' || normalized === 'waiting_for_approval' || normalized === 'waiting-approval') return 'waiting-approval'
   return 'pending'
+}
+
+const formatApprovalStatusLabel = (status) => {
+  if (status === 'waiting-approval') return 'waiting for approval'
+  return status
 }
 
 const mapStudentRecord = (record) => ({
@@ -298,7 +304,7 @@ const StudentManagement = () => {
                 </td>
                 <td>
                   <span className={`status-badge ${student.paymentApproved}`}>
-                    {student.paymentApproved}
+                    {formatApprovalStatusLabel(student.paymentApproved)}
                   </span>
                 </td>
                 <td>

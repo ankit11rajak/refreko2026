@@ -218,22 +218,22 @@
   text-transform: uppercase;
 }
 
-.status-badge.active {
-  background: rgba(255, 193, 7, 0.2);
-  color: #FFC107;
-  border: 1px solid #FFC107;
+.student-management .status-badge.active {
+  background: rgba(76, 175, 80, 0.2);
+  color: #4CAF50;
+  border: 1px solid #4CAF50;
 }
 
-.status-badge.inactive {
-  background: rgba(255, 193, 7, 0.2);
-  color: #FFC107;
-  border: 1px solid #FFC107;
+.student-management .status-badge.inactive {
+  background: rgba(229, 57, 53, 0.2);
+  color: #E53935;
+  border: 1px solid #E53935;
 }
 
 .status-badge.flag-true {
-  background: rgba(255, 193, 7, 0.2);
-  color: #FFC107;
-  border: 1px solid #FFC107;
+  background: rgba(76, 175, 80, 0.2);
+  color: #4CAF50;
+  border: 1px solid #4CAF50;
 }
 
 .status-badge.flag-false {
@@ -243,9 +243,9 @@
 }
 
 .status-badge.approved {
-  background: rgba(255, 193, 7, 0.2);
-  color: #FFC107;
-  border: 1px solid rgba(255, 193, 7, 0.6);
+  background: rgba(76, 175, 80, 0.2);
+  color: #4CAF50;
+  border: 1px solid rgba(76, 175, 80, 0.6);
 }
 
 .status-badge.declined {
@@ -255,6 +255,12 @@
 }
 
 .status-badge.pending {
+  background: rgba(255, 193, 7, 0.2);
+  color: #FFC107;
+  border: 1px solid rgba(255, 193, 7, 0.6);
+}
+
+.status-badge.waiting-approval {
   background: rgba(255, 193, 7, 0.2);
   color: #FFC107;
   border: 1px solid rgba(255, 193, 7, 0.6);
@@ -342,15 +348,15 @@
 }
 
 .action-btn.edit:hover {
-  background: rgba(122, 31, 162, 0.2);
-  border-color: #7A1FA2;
-  color: #7A1FA2;
+  background: rgba(229, 57, 53, 0.2);
+  border-color: #E53935;
+  color: #E53935;
 }
 
 .action-btn.view:hover {
-  background: rgba(122, 31, 162, 0.15);
-  border-color: #7A1FA2;
-  color: #7A1FA2;
+  background: rgba(229, 57, 53, 0.15);
+  border-color: #E53935;
+  color: #E53935;
 }
 
 .action-btn.reset:hover {
@@ -580,3 +586,4 @@
     padding: 8px 10px;
   }
 }
+
