@@ -99,4 +99,19 @@ CREATE TABLE IF NOT EXISTS event_staff_users (
   INDEX idx_staff_auth_token (auth_token)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+CREATE TABLE IF NOT EXISTS gate_entry_records (
+  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  student_code VARCHAR(64) NOT NULL,
+  student_name VARCHAR(160) NOT NULL,
+  entry_date DATE NOT NULL,
+  entry_at DATETIME NOT NULL,
+  entry_by VARCHAR(120) NOT NULL,
+  entry_method ENUM('qr','manual','search') NOT NULL DEFAULT 'manual',
+  qr_payload_hash CHAR(64) NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY uq_gate_entry_daily (student_code, entry_date),
+  INDEX idx_gate_entry_date (entry_date),
+  INDEX idx_gate_entry_student (student_code)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 -- Day entry columns are auto-migrated by API route code for student_details.

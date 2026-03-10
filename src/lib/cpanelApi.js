@@ -423,6 +423,58 @@ export const cpanelApi = {
     })
   },
 
+  gateVolunteerSearchStudents: async ({ token, query }) => {
+    return request('/staff/gate-volunteer/search', {
+      headers: {
+        Authorization: `Bearer ${token}`
+      },
+      query: {
+        query
+      }
+    })
+  },
+
+  gateVolunteerListEntries: async ({ token, entryDate, limit = 100 }) => {
+    return request('/staff/gate-volunteer/entries', {
+      headers: {
+        Authorization: `Bearer ${token}`
+      },
+      query: {
+        entry_date: entryDate,
+        limit
+      }
+    })
+  },
+
+  gateVolunteerMarkEntry: async ({ token, studentCode, qrData, entryMethod = 'manual' }) => {
+    return request('/staff/gate-volunteer/entry', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`
+      },
+      body: JSON.stringify({
+        student_code: studentCode,
+        qr_data: qrData,
+        entry_method: entryMethod
+      })
+    })
+  },
+
+  gateVolunteerResolveStudent: async ({ token, studentCode, qrData }) => {
+    return request('/staff/gate-volunteer/resolve', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`
+      },
+      body: JSON.stringify({
+        student_code: studentCode,
+        qr_data: qrData
+      })
+    })
+  },
+
   // Google Wallet Integration
   generateGoogleWalletPass: async (studentCode) => {
     if (!studentCode) {

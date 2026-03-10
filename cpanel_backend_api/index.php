@@ -132,6 +132,22 @@ try {
         staff_mark_gate_entry();
     }
 
+    if ($method === 'GET' && $path === '/staff/gate-volunteer/search') {
+        staff_gate_volunteer_search();
+    }
+
+    if ($method === 'GET' && $path === '/staff/gate-volunteer/entries') {
+        staff_gate_volunteer_entries();
+    }
+
+    if ($method === 'POST' && $path === '/staff/gate-volunteer/entry') {
+        staff_gate_volunteer_mark_entry();
+    }
+
+    if ($method === 'POST' && $path === '/staff/gate-volunteer/resolve') {
+        staff_gate_volunteer_resolve_student();
+    }
+
     if ($method === 'GET' && $path === '/google-wallet/generate') {
         google_wallet_generate();
     }

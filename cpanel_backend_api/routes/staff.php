@@ -17,6 +17,30 @@ function staff_scope_columns_available(PDO $pdo): bool
         && staff_table_has_column($pdo, 'event_staff_users', 'year_scope');
 }
 
+function staff_table_exists(PDO $pdo, string $tableName): bool
+{
+    if (!preg_match('/^[a-zA-Z0-9_]+$/', $tableName)) {
+        return false;
+    }
+
+    $sql = sprintf('SHOW TABLES LIKE %s', $pdo->quote($tableName));
+    $stmt = $pdo->query($sql);
+    return $stmt ? (bool)$stmt->fetch() : false;
+}
+
+function staff_student_table_name(PDO $pdo): string
+{
+    if (staff_table_exists($pdo, 'student_details')) {
+        return 'student_details';
+    }
+
+    if (staff_table_exists($pdo, 'students')) {
+        return 'students';
+    }
+
+    return 'student_details';
+}
+
 function ensure_staff_schema(PDO $pdo): void
 {
     $pdo->exec("CREATE TABLE IF NOT EXISTS event_staff_users (
@@ -36,24 +60,41 @@ function ensure_staff_schema(PDO $pdo): void
         INDEX idx_staff_auth_token (auth_token)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
-    $day1At = $pdo->query("SHOW COLUMNS FROM student_details LIKE 'day1_entry_at'")->fetch();
-    if (!$day1At) {
-        $pdo->exec("ALTER TABLE student_details ADD COLUMN day1_entry_at DATETIME NULL AFTER gate_pass_created");
-    }
+    $pdo->exec("CREATE TABLE IF NOT EXISTS gate_entry_records (
+        id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+        student_code VARCHAR(64) NOT NULL,
+        student_name VARCHAR(160) NOT NULL,
+        entry_date DATE NOT NULL,
+        entry_at DATETIME NOT NULL,
+        entry_by VARCHAR(120) NOT NULL,
+        entry_method ENUM('qr','manual','search') NOT NULL DEFAULT 'manual',
+        qr_payload_hash CHAR(64) NULL,
+        created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE KEY uq_gate_entry_daily (student_code, entry_date),
+        INDEX idx_gate_entry_date (entry_date),
+        INDEX idx_gate_entry_student (student_code)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
-    $day1By = $pdo->query("SHOW COLUMNS FROM student_details LIKE 'day1_entry_by'")->fetch();
-    if (!$day1By) {
-        $pdo->exec("ALTER TABLE student_details ADD COLUMN day1_entry_by VARCHAR(120) NULL AFTER day1_entry_at");
-    }
+    if (staff_table_exists($pdo, 'student_details')) {
+        $day1At = $pdo->query("SHOW COLUMNS FROM student_details LIKE 'day1_entry_at'")->fetch();
+        if (!$day1At) {
+            $pdo->exec("ALTER TABLE student_details ADD COLUMN day1_entry_at DATETIME NULL AFTER gate_pass_created");
+        }
 
-    $day2At = $pdo->query("SHOW COLUMNS FROM student_details LIKE 'day2_entry_at'")->fetch();
-    if (!$day2At) {
-        $pdo->exec("ALTER TABLE student_details ADD COLUMN day2_entry_at DATETIME NULL AFTER day1_entry_by");
-    }
+        $day1By = $pdo->query("SHOW COLUMNS FROM student_details LIKE 'day1_entry_by'")->fetch();
+        if (!$day1By) {
+            $pdo->exec("ALTER TABLE student_details ADD COLUMN day1_entry_by VARCHAR(120) NULL AFTER day1_entry_at");
+        }
 
-    $day2By = $pdo->query("SHOW COLUMNS FROM student_details LIKE 'day2_entry_by'")->fetch();
-    if (!$day2By) {
-        $pdo->exec("ALTER TABLE student_details ADD COLUMN day2_entry_by VARCHAR(120) NULL AFTER day2_entry_at");
+        $day2At = $pdo->query("SHOW COLUMNS FROM student_details LIKE 'day2_entry_at'")->fetch();
+        if (!$day2At) {
+            $pdo->exec("ALTER TABLE student_details ADD COLUMN day2_entry_at DATETIME NULL AFTER day1_entry_by");
+        }
+
+        $day2By = $pdo->query("SHOW COLUMNS FROM student_details LIKE 'day2_entry_by'")->fetch();
+        if (!$day2By) {
+            $pdo->exec("ALTER TABLE student_details ADD COLUMN day2_entry_by VARCHAR(120) NULL AFTER day2_entry_at");
+        }
     }
 
     try {
@@ -69,6 +110,345 @@ function ensure_staff_schema(PDO $pdo): void
     } catch (Throwable $error) {
         error_log('staff schema migration warning (scope columns): ' . $error->getMessage());
     }
+}
+
+function gate_entry_timezone(): DateTimeZone
+{
+    return new DateTimeZone('Asia/Kolkata');
+}
+
+function gate_entry_today_utc(): string
+{
+    $now = new DateTimeImmutable('now', gate_entry_timezone());
+    return $now->format('Y-m-d');
+}
+
+function gate_entry_now_local(): string
+{
+    $now = new DateTimeImmutable('now', gate_entry_timezone());
+    return $now->format('Y-m-d H:i:s');
+}
+
+function get_gate_eligible_student(PDO $pdo, string $studentCode): ?array
+{
+    $studentsTable = staff_student_table_name($pdo);
+
+    $sql = sprintf('SELECT student_code,
+                                  name,
+                                  department,
+                                  year,
+                                  payment_completion,
+                                  payment_approved,
+                                  gate_pass_created
+                           FROM %s
+                           WHERE UPPER(TRIM(student_code)) = :student_code
+                           ORDER BY id DESC
+                           LIMIT 1', $studentsTable);
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute([':student_code' => strtoupper(trim($studentCode))]);
+    $row = $stmt->fetch();
+
+    if (!$row) {
+        return null;
+    }
+
+    $paymentCompletion = (int)($row['payment_completion'] ?? 0) === 1;
+    $paymentApproved = strtolower(trim((string)($row['payment_approved'] ?? 'pending'))) === 'approved';
+    $gatePassCreated = (int)($row['gate_pass_created'] ?? 0) === 1;
+
+    $isEligible = $paymentCompletion && $paymentApproved && $gatePassCreated;
+    $reason = '';
+    if (!$paymentCompletion) {
+        $reason = 'Contribution payment is not submitted';
+    } elseif (!$paymentApproved) {
+        $reason = 'Contribution payment is not approved';
+    } elseif (!$gatePassCreated) {
+        $reason = 'Gate pass is not generated';
+    }
+
+    return [
+        'student_code' => strtoupper(trim((string)($row['student_code'] ?? ''))),
+        'name' => trim((string)($row['name'] ?? '')),
+        'department' => trim((string)($row['department'] ?? '')),
+        'year' => trim((string)($row['year'] ?? '')),
+        'payment_completion' => $paymentCompletion,
+        'payment_approved' => $paymentApproved,
+        'gate_pass_created' => $gatePassCreated,
+        'eligible' => $isEligible,
+        'ineligible_reason' => $reason,
+    ];
+}
+
+function has_gate_entry_for_date(PDO $pdo, string $studentCode, string $entryDate): ?array
+{
+    $stmt = $pdo->prepare('SELECT student_code, student_name, entry_date, entry_at, entry_by, entry_method
+                           FROM gate_entry_records
+                           WHERE student_code = :student_code
+                             AND entry_date = :entry_date
+                           LIMIT 1');
+    $stmt->execute([
+        ':student_code' => strtoupper(trim($studentCode)),
+        ':entry_date' => $entryDate,
+    ]);
+    $row = $stmt->fetch();
+    return $row ?: null;
+}
+
+function staff_gate_volunteer_search(): void
+{
+    $pdo = db();
+    get_authenticated_staff($pdo, ['volunteer']);
+    $studentsTable = staff_student_table_name($pdo);
+
+    $query = trim((string)($_GET['query'] ?? ''));
+    if ($query === '') {
+        json_response(['success' => true, 'students' => []]);
+    }
+
+    $searchUpper = '%' . strtoupper($query) . '%';
+    $compactRaw = preg_replace('/[^A-Za-z0-9]+/', '', $query);
+    $compactQuery = strtoupper((string)($compactRaw ?? ''));
+    $compactSearch = '%' . $compactQuery . '%';
+        $sql = sprintf('SELECT student_code,
+                                  name,
+                                  department,
+                                  year
+                                                     FROM %s
+                           WHERE TRIM(COALESCE(student_code, "")) <> ""
+                             AND (
+                                 UPPER(COALESCE(name, "")) LIKE :search_upper
+                                 OR UPPER(COALESCE(student_code, "")) LIKE :search_upper
+                                 OR REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(UPPER(COALESCE(student_code, "")), CHAR(92), ""), "/", ""), " ", ""), "-", ""), "_", "") LIKE :search_compact
+                             )
+                           ORDER BY name ASC
+                                                     LIMIT 40', $studentsTable);
+        try {
+            $stmt = $pdo->prepare($sql);
+            $stmt->execute([
+                ':search_upper' => $searchUpper,
+                ':search_compact' => $compactSearch,
+            ]);
+            $rows = $stmt->fetchAll();
+        } catch (Throwable $error) {
+            error_log('staff_gate_volunteer_search error: ' . $error->getMessage());
+            json_response([
+                'success' => false,
+                'message' => 'Unable to search students right now',
+            ], 500);
+        }
+    if (!is_array($rows)) {
+        $rows = [];
+    }
+
+    $today = gate_entry_today_utc();
+    $students = [];
+    foreach ($rows as $row) {
+        $studentCode = strtoupper(trim((string)($row['student_code'] ?? '')));
+        if ($studentCode === '') {
+            continue;
+        }
+
+        $student = get_gate_eligible_student($pdo, $studentCode);
+        if (!$student) {
+            continue;
+        }
+
+        $todayEntry = has_gate_entry_for_date($pdo, $studentCode, $today);
+        $students[] = [
+            'student_code' => $studentCode,
+            'name' => $student['name'],
+            'department' => $student['department'],
+            'year' => $student['year'],
+            'eligible' => (bool)$student['eligible'],
+            'ineligible_reason' => (string)$student['ineligible_reason'],
+            'entered_today' => $todayEntry !== null,
+            'today_entry' => $todayEntry,
+        ];
+    }
+
+    json_response([
+        'success' => true,
+        'students' => $students,
+        'entry_date' => $today,
+    ]);
+}
+
+function staff_gate_volunteer_entries(): void
+{
+    $pdo = db();
+    get_authenticated_staff($pdo, ['volunteer']);
+
+    $entryDate = trim((string)($_GET['entry_date'] ?? gate_entry_today_utc()));
+    if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $entryDate) !== 1) {
+        json_response(['success' => false, 'message' => 'entry_date must be YYYY-MM-DD'], 422);
+    }
+
+    $limit = (int)($_GET['limit'] ?? 100);
+    $limit = max(1, min(500, $limit));
+
+    $stmt = $pdo->prepare('SELECT id,
+                                  student_code,
+                                  student_name,
+                                  entry_date,
+                                  entry_at,
+                                  entry_by,
+                                  entry_method
+                           FROM gate_entry_records
+                           WHERE entry_date = :entry_date
+                           ORDER BY entry_at DESC
+                           LIMIT :limit');
+    $stmt->bindValue(':entry_date', $entryDate, PDO::PARAM_STR);
+    $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
+    $stmt->execute();
+    $rows = $stmt->fetchAll();
+
+    json_response([
+        'success' => true,
+        'entry_date' => $entryDate,
+        'records' => is_array($rows) ? $rows : [],
+    ]);
+}
+
+function staff_gate_volunteer_mark_entry(): void
+{
+    $payload = get_json_input();
+
+    $pdo = db();
+    $staff = get_authenticated_staff($pdo, ['volunteer']);
+
+    $studentCode = parse_staff_student_code($payload['student_code'] ?? null, $payload['qr_data'] ?? null);
+    if ($studentCode === '') {
+        json_response(['success' => false, 'message' => 'student_code or qr_data is required'], 422);
+    }
+
+    $entryMethod = strtolower(trim((string)($payload['entry_method'] ?? 'manual')));
+    if (!in_array($entryMethod, ['qr', 'manual', 'search'], true)) {
+        $entryMethod = 'manual';
+    }
+
+    $student = get_gate_eligible_student($pdo, $studentCode);
+    if (!$student) {
+        json_response(['success' => false, 'message' => 'Student not found'], 404);
+    }
+
+    if (!(bool)$student['eligible']) {
+        json_response([
+            'success' => false,
+            'message' => (string)$student['ineligible_reason'],
+            'student' => $student,
+        ], 403);
+    }
+
+    $entryDate = gate_entry_today_utc();
+    $existing = has_gate_entry_for_date($pdo, $studentCode, $entryDate);
+    if ($existing !== null) {
+        json_response([
+            'success' => false,
+            'message' => 'QR already used today for this student',
+            'entry' => $existing,
+        ], 409);
+    }
+
+    $qrPayload = trim((string)($payload['qr_data'] ?? ''));
+    $qrPayloadHash = $qrPayload !== '' ? hash('sha256', $qrPayload) : null;
+    $entryAt = gate_entry_now_local();
+
+    $insert = $pdo->prepare('INSERT INTO gate_entry_records (
+                                student_code,
+                                student_name,
+                                entry_date,
+                                entry_at,
+                                entry_by,
+                                entry_method,
+                                qr_payload_hash
+                             ) VALUES (
+                                :student_code,
+                                :student_name,
+                                :entry_date,
+                                :entry_at,
+                                :entry_by,
+                                :entry_method,
+                                :qr_payload_hash
+                             )');
+
+    try {
+        $insert->execute([
+            ':student_code' => $studentCode,
+            ':student_name' => (string)$student['name'],
+            ':entry_date' => $entryDate,
+            ':entry_at' => $entryAt,
+            ':entry_by' => (string)($staff['username'] ?? 'volunteer'),
+            ':entry_method' => $entryMethod,
+            ':qr_payload_hash' => $qrPayloadHash,
+        ]);
+    } catch (Throwable $error) {
+        if ((string)$error->getCode() === '23000') {
+            $conflict = has_gate_entry_for_date($pdo, $studentCode, $entryDate);
+            json_response([
+                'success' => false,
+                'message' => 'QR already used today for this student',
+                'entry' => $conflict,
+            ], 409);
+        }
+
+        json_response([
+            'success' => false,
+            'message' => 'Unable to store gate entry record',
+            'error' => $error->getMessage(),
+        ], 500);
+    }
+
+    json_response([
+        'success' => true,
+        'message' => 'Entry granted',
+        'entry' => [
+            'student_code' => $studentCode,
+            'student_name' => (string)$student['name'],
+            'entry_date' => $entryDate,
+            'entry_at' => $entryAt,
+            'entry_by' => (string)($staff['username'] ?? 'volunteer'),
+            'entry_method' => $entryMethod,
+        ],
+    ]);
+}
+
+function staff_gate_volunteer_resolve_student(): void
+{
+    $payload = get_json_input();
+
+    $pdo = db();
+    get_authenticated_staff($pdo, ['volunteer']);
+
+    $studentCode = parse_staff_student_code($payload['student_code'] ?? null, $payload['qr_data'] ?? null);
+    if ($studentCode === '') {
+        json_response(['success' => false, 'message' => 'student_code or qr_data is required'], 422);
+    }
+
+    $student = get_gate_eligible_student($pdo, $studentCode);
+    if (!$student) {
+        json_response(['success' => false, 'message' => 'Student not found'], 404);
+    }
+
+    $entryDate = gate_entry_today_utc();
+    $existing = has_gate_entry_for_date($pdo, $studentCode, $entryDate);
+
+    json_response([
+        'success' => true,
+        'entry_date' => $entryDate,
+        'student' => [
+            'student_code' => (string)$student['student_code'],
+            'name' => (string)$student['name'],
+            'department' => (string)$student['department'],
+            'year' => (string)$student['year'],
+            'eligible' => (bool)$student['eligible'],
+            'ineligible_reason' => (string)$student['ineligible_reason'],
+            'payment_completion' => (bool)$student['payment_completion'],
+            'payment_approved' => (bool)$student['payment_approved'],
+            'gate_pass_created' => (bool)$student['gate_pass_created'],
+        ],
+        'entered_today' => $existing !== null,
+        'today_entry' => $existing,
+    ]);
 }
 
 function extract_bearer_token(): string
@@ -95,11 +475,63 @@ function resolve_student_code_from_hash(string $hash): string
 
     try {
         $pdo = db();
-        $stmt = $pdo->prepare('SELECT student_code FROM student_details WHERE md5(upper(trim(student_code))) = ? LIMIT 1');
+        $studentsTable = staff_student_table_name($pdo);
+        $hashSql = sprintf('SELECT student_code FROM %s WHERE md5(upper(trim(student_code))) = ? LIMIT 1', $studentsTable);
+        $stmt = $pdo->prepare($hashSql);
         $stmt->execute([$normalizedHash]);
         $row = $stmt->fetch();
         $candidate = strtoupper(trim((string)($row['student_code'] ?? '')));
-        return $candidate;
+        if ($candidate !== '') {
+            return $candidate;
+        }
+
+                // Fallback: tolerate format drift in student_code stored in DB
+                // (slashes, spaces, separators) while still matching legacy QR hashes.
+                $scanSql = sprintf('SELECT student_code
+                                                        FROM %s
+                                                        WHERE student_code IS NOT NULL
+                                                            AND TRIM(student_code) <> ""
+                                                        ORDER BY id DESC
+                                                        LIMIT 20000', $studentsTable);
+                $scanStmt = $pdo->prepare($scanSql);
+        $scanStmt->execute();
+        $rows = $scanStmt->fetchAll();
+        if (!is_array($rows)) {
+            return '';
+        }
+
+        foreach ($rows as $candidateRow) {
+            $rawCode = strtoupper(trim((string)($candidateRow['student_code'] ?? '')));
+            if ($rawCode === '') {
+                continue;
+            }
+
+            $variants = [
+                $rawCode,
+                preg_replace('/\s+/', '', $rawCode),
+                str_replace('/', '\\', $rawCode),
+                str_replace('\\', '/', $rawCode),
+                preg_replace('/[\\\\\/]+/', '\\', $rawCode),
+                preg_replace('/[\\\\\/]+/', '/', $rawCode),
+                str_replace([' ', '-', '_'], '', $rawCode),
+            ];
+
+            $normalizedVariants = [];
+            foreach ($variants as $variant) {
+                $clean = strtoupper(trim((string)$variant));
+                if ($clean !== '') {
+                    $normalizedVariants[$clean] = true;
+                }
+            }
+
+            foreach (array_keys($normalizedVariants) as $variantText) {
+                if (md5($variantText) === $normalizedHash) {
+                    return $rawCode;
+                }
+            }
+        }
+
+        return '';
     } catch (Throwable $error) {
         error_log('staff hash lookup error: ' . $error->getMessage());
         return '';

@@ -13,6 +13,7 @@ import SKFDashboard from './pages/SKFDashboard.jsx'
 import PaymentGateway from './pages/PaymentGateway.jsx'
 import StaffLogin from './pages/StaffLogin.jsx'
 import StaffPortal from './pages/StaffPortal.jsx'
+import GateVolunteerPortal from './pages/GateVolunteerPortal.jsx'
 import Gallery from './components/Gallery/Gallery.jsx'
 
 const APP_BUILD_ID = typeof __APP_BUILD_ID__ !== 'undefined' ? String(__APP_BUILD_ID__) : 'dev'
@@ -83,6 +84,7 @@ const renderApp = () => {
           <Route path="/payment-gateway" element={<PaymentGateway />} />
           <Route path="/login/staff" element={<StaffLogin />} />
           <Route path="/staff-portal" element={<StaffPortal />} />
+          <Route path="/gate-volunteer-portal" element={<GateVolunteerPortal />} />
           <Route
             path="/events"
             element={
