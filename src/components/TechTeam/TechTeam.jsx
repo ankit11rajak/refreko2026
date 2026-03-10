@@ -11,8 +11,16 @@ const teamMembers = [
     color: '#E53935',
     image: '/AnkitRajak.jpeg'
   },
-  {
+    {
     id: 2,
+    name: 'RAJESH MONDAL',
+    department: 'BCA 2nd Year',
+    initial: 'RM',
+    color: '#FFC107',
+    image: '/RajeshMondol.jpeg'
+  },
+  {
+    id: 3,
     name: 'KOUSHIK DAS',
     department: 'CSE 3rd Year',
     initial: 'KD',
@@ -20,7 +28,7 @@ const teamMembers = [
     image: '/KoushikDas.jpeg'
   },
   {
-    id: 3,
+    id: 4,
     name: 'PRITAM GHOSH',
     department: 'CSE 3rd Year',
     initial: 'PG',
@@ -28,21 +36,21 @@ const teamMembers = [
     image: '/PritamGhosh.jpeg'
   },
   {
-    id: 4,
+    id: 5,
     name: 'PRANJAL DAS',
     department: 'CYS 3rd Year',
     initial: 'PD',
     color: '#E53935',
     image: '/pranjal.webp'
   },
-  {
-    id: 5,
-    name: 'RAJESH MONDAL',
-    department: 'BCA 2nd Year',
-    initial: 'RM',
-    color: '#FFC107',
-    image: '/RajeshMondol.jpeg'
-  },
+  // {
+  //   id: 5,
+  //   name: 'RAJESH MONDAL',
+  //   department: 'BCA 2nd Year',
+  //   initial: 'RM',
+  //   color: '#FFC107',
+  //   image: '/RajeshMondol.jpeg'
+  // },
   {
     id: 6,
     name: 'ANKIT PAL',

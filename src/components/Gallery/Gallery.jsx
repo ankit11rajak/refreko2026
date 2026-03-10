@@ -6,6 +6,23 @@ const Gallery = () => {
   const [selectedImage, setSelectedImage] = useState(null)
   const navigate = useNavigate()
 
+  const festCoordinators = [
+    {
+      id: 1,
+      name: 'Arman Chowdhury',
+      // role: 'Event Operations Lead',
+      image: '/gallery/arman.jpeg',
+      alt: 'Fest Coordinator 01'
+    },
+    {
+      id: 2,
+      name: 'Ankit Kumar singh',
+      // role: 'Student Engagement Lead',
+      image: '/gallery/ankit.jpeg',
+      alt: 'Fest Coordinator 02'
+    }
+  ]
+
   // Sample gallery images - replace with your actual images
   const galleryImages = [
     {
@@ -38,72 +55,72 @@ const Gallery = () => {
       alt: 'Refresko Image 5',
       title: 'Event Highlight 5'
     },
-    {
-      id: 6,
-      src: '/gallery/6.jpeg',
-      alt: 'Refresko Image 6',
-      title: 'Event Highlight 6'
-    },
-    {
-      id: 7,
-      src: '/gallery/7.jpeg',
-      alt: 'Refresko Image 7',
-      title: 'Event Highlight 7'
-    },
-    {
-      id: 8,
-      src: '/gallery/8.jpeg',
-      alt: 'Refresko Image 8',
-      title: 'Event Highlight 8'
-    },
-    {
-      id: 9,
-      src: '/gallery/9.jpeg',
-      alt: 'Refresko Image 9',
-      title: 'Event Highlight 9'
-    },
-    {
-      id: 10,
-      src: '/gallery/10.jpeg',
-      alt: 'Refresko Image 10',
-      title: 'Event Highlight 10'
-    },
-    {
-      id: 11,
-      src: '/gallery/11.jpeg',
-      alt: 'Refresko Image 11',
-      title: 'Event Highlight 11'
-    },
-    {
-      id: 12,
-      src: '/gallery/12.jpeg',
-      alt: 'Refresko Image 12',
-      title: 'Event Highlight 12'
-    },
-    {
-      id: 13,
-      src: '/gallery/13.jpeg',
-      alt: 'Refresko Image 13',
-      title: 'Event Highlight 13'
-    },
-    {
-      id: 14,
-      src: '/gallery/14.jpeg',
-      alt: 'Refresko Image 14',
-      title: 'Event Highlight 14'
-    },
-    {
-      id: 15,
-      src: '/gallery/15.jpeg',
-      alt: 'Refresko Image 15',
-      title: 'Event Highlight 15'
-    },
-    {
-      id: 16,
-      src: '/gallery/16.jpeg',
-      alt: 'Refresko Image 16',
-      title: 'Event Highlight 16'
-    },
+    // {
+    //   id: 6,
+    //   src: '/gallery/6.jpeg',
+    //   alt: 'Refresko Image 6',
+    //   title: 'Event Highlight 6'
+    // },
+    // {
+    //   id: 7,
+    //   src: '/gallery/7.jpeg',
+    //   alt: 'Refresko Image 7',
+    //   title: 'Event Highlight 7'
+    // },
+    // {
+    //   id: 8,
+    //   src: '/gallery/8.jpeg',
+    //   alt: 'Refresko Image 8',
+    //   title: 'Event Highlight 8'
+    // },
+    // {
+    //   id: 9,
+    //   src: '/gallery/9.jpeg',
+    //   alt: 'Refresko Image 9',
+    //   title: 'Event Highlight 9'
+    // },
+    // {
+    //   id: 10,
+    //   src: '/gallery/10.jpeg',
+    //   alt: 'Refresko Image 10',
+    //   title: 'Event Highlight 10'
+    // },
+    // {
+    //   id: 11,
+    //   src: '/gallery/11.jpeg',
+    //   alt: 'Refresko Image 11',
+    //   title: 'Event Highlight 11'
+    // },
+    // {
+    //   id: 12,
+    //   src: '/gallery/12.jpeg',
+    //   alt: 'Refresko Image 12',
+    //   title: 'Event Highlight 12'
+    // },
+    // {
+    //   id: 13,
+    //   src: '/gallery/13.jpeg',
+    //   alt: 'Refresko Image 13',
+    //   title: 'Event Highlight 13'
+    // },
+    // {
+    //   id: 14,
+    //   src: '/gallery/14.jpeg',
+    //   alt: 'Refresko Image 14',
+    //   title: 'Event Highlight 14'
+    // },
+    // {
+    //   id: 15,
+    //   src: '/gallery/15.jpeg',
+    //   alt: 'Refresko Image 15',
+    //   title: 'Event Highlight 15'
+    // },
+    // {
+    //   id: 16,
+    //   src: '/gallery/16.jpeg',
+    //   alt: 'Refresko Image 16',
+    //   title: 'Event Highlight 16'
+    // },
   ]
 
   const openModal = (image) => {
@@ -157,6 +174,34 @@ const Gallery = () => {
           A visual journey through our events, team, and memorable moments
         </p>
       </div>
+
+      <section className="coordinators-section">
+        <div className="coordinators-heading">
+          <span className="coordinators-kicker">Meet our Members</span>
+          <h2>Fest Coordinators</h2>
+          <p>Meet the team members leading Refresko 2026 from the front.</p>
+        </div>
+
+        <div className="coordinators-grid">
+          {festCoordinators.map((coordinator) => (
+            <article key={coordinator.id} className="coordinator-card">
+              <div className="coordinator-avatar">
+                <img
+                  src={coordinator.image}
+                  alt={coordinator.alt}
+                  onError={(e) => {
+                    e.currentTarget.src = 'https://via.placeholder.com/300x300?text=' + encodeURIComponent(coordinator.name)
+                  }}
+                />
+              </div>
+              <div className="coordinator-copy">
+                <h3>{coordinator.name}</h3>
+                <p>{coordinator.role}</p>
+              </div>
+            </article>
+          ))}
+        </div>
+      </section>
 
       {/* Gallery grid */}
       <div className="gallery-grid">
