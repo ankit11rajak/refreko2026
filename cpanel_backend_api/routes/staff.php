@@ -68,12 +68,20 @@ function ensure_staff_schema(PDO $pdo): void
         entry_at DATETIME NOT NULL,
         entry_by VARCHAR(120) NOT NULL,
         entry_method ENUM('qr','manual','search') NOT NULL DEFAULT 'manual',
-        qr_payload_hash CHAR(64) NULL,
         created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
         UNIQUE KEY uq_gate_entry_daily (student_code, entry_date),
         INDEX idx_gate_entry_date (entry_date),
         INDEX idx_gate_entry_student (student_code)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+    try {
+        $qrPayloadHashColumn = $pdo->query("SHOW COLUMNS FROM gate_entry_records LIKE 'qr_payload_hash'")->fetch();
+        if ($qrPayloadHashColumn) {
+            $pdo->exec("ALTER TABLE gate_entry_records DROP COLUMN qr_payload_hash");
+        }
+    } catch (Throwable $error) {
+        error_log('staff schema migration warning (drop qr_payload_hash): ' . $error->getMessage());
+    }
 
     if (staff_table_exists($pdo, 'student_details')) {
         $day1At = $pdo->query("SHOW COLUMNS FROM student_details LIKE 'day1_entry_at'")->fetch();
@@ -344,13 +352,11 @@ function staff_gate_volunteer_mark_entry(): void
     if ($existing !== null) {
         json_response([
             'success' => false,
-            'message' => 'QR already used today for this student',
+            'message' => 'Entry already marked today for this student',
             'entry' => $existing,
         ], 409);
     }
 
-    $qrPayload = trim((string)($payload['qr_data'] ?? ''));
-    $qrPayloadHash = $qrPayload !== '' ? hash('sha256', $qrPayload) : null;
     $entryAt = gate_entry_now_local();
 
     $insert = $pdo->prepare('INSERT INTO gate_entry_records (
@@ -359,16 +365,14 @@ function staff_gate_volunteer_mark_entry(): void
                                 entry_date,
                                 entry_at,
                                 entry_by,
-                                entry_method,
-                                qr_payload_hash
+                                entry_method
                              ) VALUES (
                                 :student_code,
                                 :student_name,
                                 :entry_date,
                                 :entry_at,
                                 :entry_by,
-                                :entry_method,
-                                :qr_payload_hash
+                                :entry_method
                              )');
 
     try {
@@ -379,14 +383,13 @@ function staff_gate_volunteer_mark_entry(): void
             ':entry_at' => $entryAt,
             ':entry_by' => (string)($staff['username'] ?? 'volunteer'),
             ':entry_method' => $entryMethod,
-            ':qr_payload_hash' => $qrPayloadHash,
         ]);
     } catch (Throwable $error) {
         if ((string)$error->getCode() === '23000') {
             $conflict = has_gate_entry_for_date($pdo, $studentCode, $entryDate);
             json_response([
                 'success' => false,
-                'message' => 'QR already used today for this student',
+                'message' => 'Entry already marked today for this student',
                 'entry' => $conflict,
             ], 409);
         }
@@ -466,78 +469,6 @@ function extract_bearer_token(): string
     return '';
 }
 
-function resolve_student_code_from_hash(string $hash): string
-{
-    $normalizedHash = strtolower(trim($hash));
-    if ($normalizedHash === '' || preg_match('/^[a-f0-9]{32}$/', $normalizedHash) !== 1) {
-        return '';
-    }
-
-    try {
-        $pdo = db();
-        $studentsTable = staff_student_table_name($pdo);
-        $hashSql = sprintf('SELECT student_code FROM %s WHERE md5(upper(trim(student_code))) = ? LIMIT 1', $studentsTable);
-        $stmt = $pdo->prepare($hashSql);
-        $stmt->execute([$normalizedHash]);
-        $row = $stmt->fetch();
-        $candidate = strtoupper(trim((string)($row['student_code'] ?? '')));
-        if ($candidate !== '') {
-            return $candidate;
-        }
-
-                // Fallback: tolerate format drift in student_code stored in DB
-                // (slashes, spaces, separators) while still matching legacy QR hashes.
-                $scanSql = sprintf('SELECT student_code
-                                                        FROM %s
-                                                        WHERE student_code IS NOT NULL
-                                                            AND TRIM(student_code) <> ""
-                                                        ORDER BY id DESC
-                                                        LIMIT 20000', $studentsTable);
-                $scanStmt = $pdo->prepare($scanSql);
-        $scanStmt->execute();
-        $rows = $scanStmt->fetchAll();
-        if (!is_array($rows)) {
-            return '';
-        }
-
-        foreach ($rows as $candidateRow) {
-            $rawCode = strtoupper(trim((string)($candidateRow['student_code'] ?? '')));
-            if ($rawCode === '') {
-                continue;
-            }
-
-            $variants = [
-                $rawCode,
-                preg_replace('/\s+/', '', $rawCode),
-                str_replace('/', '\\', $rawCode),
-                str_replace('\\', '/', $rawCode),
-                preg_replace('/[\\\\\/]+/', '\\', $rawCode),
-                preg_replace('/[\\\\\/]+/', '/', $rawCode),
-                str_replace([' ', '-', '_'], '', $rawCode),
-            ];
-
-            $normalizedVariants = [];
-            foreach ($variants as $variant) {
-                $clean = strtoupper(trim((string)$variant));
-                if ($clean !== '') {
-                    $normalizedVariants[$clean] = true;
-                }
-            }
-
-            foreach (array_keys($normalizedVariants) as $variantText) {
-                if (md5($variantText) === $normalizedHash) {
-                    return $rawCode;
-                }
-            }
-        }
-
-        return '';
-    } catch (Throwable $error) {
-        error_log('staff hash lookup error: ' . $error->getMessage());
-        return '';
-    }
-}
-
 function parse_staff_student_code(?string $studentCode, ?string $qrData): string
 {
     $code = strtoupper(trim((string)$studentCode));
@@ -564,27 +495,6 @@ function parse_staff_student_code(?string $studentCode, ?string $qrData): string
                 return $normalized;
             }
         }
-
-        $hashCandidates = [
-            $decoded['Student_Code_Hash'] ?? null,
-            $decoded['student_code_hash'] ?? null,
-            $decoded['Details_Hash']['student_code'] ?? null,
-            $decoded['details_hash']['student_code'] ?? null,
-            $decoded['Hashes']['student_code'] ?? null,
-            $decoded['hashes']['student_code'] ?? null,
-        ];
-
-        foreach ($hashCandidates as $hashCandidate) {
-            $resolved = resolve_student_code_from_hash((string)$hashCandidate);
-            if ($resolved !== '') {
-                return $resolved;
-            }
-        }
-    }
-
-    $resolvedFromRaw = resolve_student_code_from_hash($rawQr);
-    if ($resolvedFromRaw !== '') {
-        return $resolvedFromRaw;
     }
 
     return strtoupper($rawQr);

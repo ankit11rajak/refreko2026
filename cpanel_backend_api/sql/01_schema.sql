@@ -107,7 +107,6 @@ CREATE TABLE IF NOT EXISTS gate_entry_records (
   entry_at DATETIME NOT NULL,
   entry_by VARCHAR(120) NOT NULL,
   entry_method ENUM('qr','manual','search') NOT NULL DEFAULT 'manual',
-  qr_payload_hash CHAR(64) NULL,
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   UNIQUE KEY uq_gate_entry_daily (student_code, entry_date),
   INDEX idx_gate_entry_date (entry_date),

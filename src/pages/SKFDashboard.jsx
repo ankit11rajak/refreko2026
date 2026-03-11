@@ -356,36 +356,8 @@ const SKFDashboard = () => {
 
   const gatePassPayload = useMemo(() => {
     const normalizedCode = String(student.studentId || '').trim().toUpperCase()
-    const normalizedName = String(student.name || '').trim().toLowerCase()
-    const normalizedPhone = String(student.phone || '').trim()
-    const normalizedEmail = String(student.email || '').trim().toLowerCase()
-    const normalizedDepartment = String(student.department || '').trim().toLowerCase()
-    const normalizedYear = String(student.year || '').trim().toLowerCase()
-    const normalizedPassCode = `SKF-PASS-${normalizedCode}-REFRESKO2026`
-
-    const payload = {
-      ver: '2',
-      type: 'SKF_GATE_PASS',
-      Student_Code_Hash: md5(normalizedCode),
-      Details_Hash: {
-        student_code: md5(normalizedCode),
-        pass_code: md5(normalizedPassCode),
-        name: md5(normalizedName),
-        phone: md5(normalizedPhone),
-        email: md5(normalizedEmail),
-        department: md5(normalizedDepartment),
-        year: md5(normalizedYear),
-      },
-      Generated_At: new Date().toISOString(),
-    }
-
-    return JSON.stringify(payload)
+    return normalizedCode
   }, [student])
-
-  const gatePassPayloadHash = useMemo(
-    () => md5(gatePassPayload),
-    [gatePassPayload]
-  )
 
   useEffect(() => {
     let isActive = true
@@ -770,7 +742,7 @@ const SKFDashboard = () => {
                             </div>
                           )}
                         </div>
-                        <p className="qr-hint">Tap to view full pass • hashed payload</p>
+                        <p className="qr-hint">Tap to view full pass • student code payload</p>
                       </div>
 
                       <div className="preview-info-section">
@@ -791,8 +763,8 @@ const SKFDashboard = () => {
                           <span className="info-value status-active">✓ VALID</span>
                         </div>
                         <div className="preview-info-row">
-                          <span className="info-label">QR Hash</span>
-                          <span className="info-value code">{gatePassPayloadHash.slice(0, 12)}...</span>
+                          <span className="info-label">QR Payload</span>
+                          <span className="info-value code">{gatePassPayload || '-'}</span>
                         </div>
                       </div>
                     </div>
@@ -882,14 +854,14 @@ const SKFDashboard = () => {
                       <span className="pass-value">All Days - March 27th & 28th, 2026</span>
                     </div>
                     <div className="pass-detail-row">
-                      <span className="pass-label">QR Payload Hash</span>
-                      <span className="pass-value code">{gatePassPayloadHash}</span>
+                      <span className="pass-label">QR Payload</span>
+                      <span className="pass-value code">{gatePassPayload || '-'}</span>
                     </div>
                   </div>
 
                   <div className="pass-footer">
                     <span className="pass-status valid">✓ VALID PASS</span>
-                    <span className="pass-security-chip">HASHED DETAILS</span>
+                    <span className="pass-security-chip">STUDENT CODE QR</span>
                   </div>
 
                   {/* Google Wallet Button */}

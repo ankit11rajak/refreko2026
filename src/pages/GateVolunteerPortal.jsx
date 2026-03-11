@@ -16,6 +16,7 @@ const GateVolunteerPortal = () => {
   const isDecodingRef = useRef(false)
   const zxingReaderRef = useRef(null)
   const zxingControlsRef = useRef(null)
+  const uploadInputRef = useRef(null)
 
   const token = localStorage.getItem('staffToken') || ''
   const staffRole = (localStorage.getItem('staffRole') || '').toLowerCase()
@@ -40,6 +41,8 @@ const GateVolunteerPortal = () => {
 
   const [scannerEnabled, setScannerEnabled] = useState(false)
   const [scannerError, setScannerError] = useState('')
+  const [imageScanLoading, setImageScanLoading] = useState(false)
+  const [imageScanError, setImageScanError] = useState('')
   const [resolvedStudent, setResolvedStudent] = useState(null)
 
   const canUseBarcodeDetector = useMemo(
@@ -285,6 +288,88 @@ const GateVolunteerPortal = () => {
     }
   }
 
+  const decodeQrFromImage = async (file) => {
+    const imageUrl = URL.createObjectURL(file)
+
+    try {
+      const image = await new Promise((resolve, reject) => {
+        const img = new Image()
+        img.onload = () => resolve(img)
+        img.onerror = () => reject(new Error('Unable to read selected image'))
+        img.src = imageUrl
+      })
+
+      if (canUseBarcodeDetector) {
+        try {
+          const detector = new window.BarcodeDetector({ formats: ['qr_code'] })
+          const barcodes = await detector.detect(image)
+          if (Array.isArray(barcodes) && barcodes[0]?.rawValue) {
+            return String(barcodes[0].rawValue).trim()
+          }
+        } catch {
+          // Ignore and continue with jsQR fallback.
+        }
+      }
+
+      const canvas = scanCanvasRef.current || document.createElement('canvas')
+      scanCanvasRef.current = canvas
+
+      const width = image.naturalWidth || image.width || 0
+      const height = image.naturalHeight || image.height || 0
+      if (width <= 0 || height <= 0) {
+        throw new Error('Uploaded image has invalid dimensions')
+      }
+
+      canvas.width = width
+      canvas.height = height
+      const ctx = canvas.getContext('2d', { willReadFrequently: true })
+      if (!ctx) {
+        throw new Error('Unable to process uploaded image')
+      }
+
+      ctx.drawImage(image, 0, 0, width, height)
+      const imageData = ctx.getImageData(0, 0, width, height)
+      const code = jsQR(imageData.data, width, height, { inversionAttempts: 'attemptBoth' })
+      return String(code?.data || '').trim()
+    } finally {
+      URL.revokeObjectURL(imageUrl)
+    }
+  }
+
+  const handleQrImageUpload = async (e) => {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+
+    if (!file) {
+      return
+    }
+
+    if (!String(file.type || '').startsWith('image/')) {
+      setImageScanError('Please choose an image file')
+      return
+    }
+
+    setImageScanLoading(true)
+    setImageScanError('')
+    setEntryError('')
+    setEntryMessage('')
+
+    try {
+      const scannedRaw = await decodeQrFromImage(file)
+      if (!scannedRaw) {
+        throw new Error('No QR code found in selected image')
+      }
+
+      setQrInput(scannedRaw)
+      setEntryMessage('QR detected from image. Checking student record in DB...')
+      await resolveDetectedStudent({ qrData: scannedRaw, studentCode: '', autoGrant: true })
+    } catch (error) {
+      setImageScanError(error?.message || 'Unable to detect QR code from image')
+    } finally {
+      setImageScanLoading(false)
+    }
+  }
+
   const handleSearch = async (e) => {
     e.preventDefault()
     const query = String(searchText || '').trim()
@@ -414,10 +499,26 @@ const GateVolunteerPortal = () => {
           <div className="scanner-actions">
             <button type="button" className="gate-btn" onClick={startScanner} disabled={scannerEnabled}>Start Camera Scan</button>
             <button type="button" className="gate-btn gate-btn-muted" onClick={stopScanner} disabled={!scannerEnabled}>Stop Camera</button>
+            <button
+              type="button"
+              className="gate-btn"
+              onClick={() => uploadInputRef.current?.click()}
+              disabled={imageScanLoading}
+            >
+              {imageScanLoading ? 'Processing Photo...' : 'Scan From Photo'}
+            </button>
+            <input
+              ref={uploadInputRef}
+              type="file"
+              accept="image/*"
+              onChange={handleQrImageUpload}
+              className="scanner-upload-input"
+            />
           </div>
 
           <video ref={videoRef} className="scanner-preview" autoPlay muted playsInline />
           {scannerError ? <div className="gate-alert gate-alert-error">{scannerError}</div> : null}
+          {imageScanError ? <div className="gate-alert gate-alert-error">{imageScanError}</div> : null}
 
           <form onSubmit={handleManualEntry} className="manual-entry-form">
             <label>
