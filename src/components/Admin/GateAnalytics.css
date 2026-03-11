@@ -1,0 +1,147 @@
+.gate-analytics {
+  width: 100%;
+}
+
+.gate-analytics-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.gate-analytics-header h2 {
+  margin: 0;
+  color: var(--color-primary);
+}
+
+.gate-analytics-header p {
+  margin: 4px 0 0;
+  color: var(--color-text-muted);
+}
+
+.gate-analytics-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.gate-analytics-btn {
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--color-text);
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-weight: 600;
+}
+
+.gate-analytics-btn.muted {
+  border-color: rgba(229, 57, 53, 0.5);
+  color: var(--color-primary);
+}
+
+.gate-analytics-btn:disabled {
+  opacity: 0.6;
+}
+
+.gate-analytics-summary {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+
+.summary-pill {
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 999px;
+  padding: 6px 12px;
+  font-size: 0.85rem;
+  color: var(--color-secondary);
+}
+
+.gate-analytics-filters {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  align-items: end;
+  margin-bottom: 16px;
+}
+
+.gate-analytics-filters label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  color: var(--color-text-muted);
+  font-size: 0.85rem;
+}
+
+.gate-analytics-filters input {
+  min-width: 180px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--color-text);
+  border-radius: 8px;
+  padding: 10px;
+}
+
+.search-label input {
+  min-width: 280px;
+}
+
+.gate-analytics-alert {
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin-bottom: 12px;
+}
+
+.gate-analytics-alert.error {
+  background: rgba(229, 57, 53, 0.14);
+  border: 1px solid rgba(229, 57, 53, 0.45);
+  color: #ffb7b5;
+}
+
+.gate-analytics-alert.success {
+  background: rgba(76, 175, 80, 0.14);
+  border: 1px solid rgba(76, 175, 80, 0.45);
+  color: #c8f7cb;
+}
+
+.gate-analytics-table-wrap {
+  overflow: auto;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+}
+
+.gate-analytics-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.gate-analytics-table th,
+.gate-analytics-table td {
+  text-align: left;
+  padding: 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  font-size: 0.9rem;
+}
+
+.gate-analytics-table th {
+  color: var(--color-primary);
+  background: rgba(229, 57, 53, 0.08);
+}
+
+.empty-cell {
+  text-align: center;
+  color: var(--color-text-muted);
+}
+
+.gate-analytics-delete {
+  border: 1px solid rgba(229, 57, 53, 0.5);
+  color: #ffc7c5;
+  background: rgba(229, 57, 53, 0.15);
+  border-radius: 6px;
+  padding: 6px 10px;
+}
+
+.gate-analytics-delete:disabled {
+  opacity: 0.6;
+}

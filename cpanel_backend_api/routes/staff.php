@@ -64,6 +64,8 @@ function ensure_staff_schema(PDO $pdo): void
         id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
         student_code VARCHAR(64) NOT NULL,
         student_name VARCHAR(160) NOT NULL,
+        student_department VARCHAR(120) NULL,
+        student_year VARCHAR(30) NULL,
         entry_date DATE NOT NULL,
         entry_at DATETIME NOT NULL,
         entry_by VARCHAR(120) NOT NULL,
@@ -81,6 +83,20 @@ function ensure_staff_schema(PDO $pdo): void
         }
     } catch (Throwable $error) {
         error_log('staff schema migration warning (drop qr_payload_hash): ' . $error->getMessage());
+    }
+
+    try {
+        $studentDepartmentColumn = $pdo->query("SHOW COLUMNS FROM gate_entry_records LIKE 'student_department'")->fetch();
+        if (!$studentDepartmentColumn) {
+            $pdo->exec("ALTER TABLE gate_entry_records ADD COLUMN student_department VARCHAR(120) NULL AFTER student_name");
+        }
+
+        $studentYearColumn = $pdo->query("SHOW COLUMNS FROM gate_entry_records LIKE 'student_year'")->fetch();
+        if (!$studentYearColumn) {
+            $pdo->exec("ALTER TABLE gate_entry_records ADD COLUMN student_year VARCHAR(30) NULL AFTER student_department");
+        }
+    } catch (Throwable $error) {
+        error_log('staff schema migration warning (gate entry extra columns): ' . $error->getMessage());
     }
 
     if (staff_table_exists($pdo, 'student_details')) {
@@ -137,6 +153,36 @@ function gate_entry_now_local(): string
     return $now->format('Y-m-d H:i:s');
 }
 
+function get_student_payment_state(PDO $pdo, string $studentCode): array
+{
+    $submitted = false;
+    $approved = false;
+
+    try {
+        $stmt = $pdo->prepare('SELECT status, payment_approved
+                               FROM payments
+                               WHERE UPPER(TRIM(student_code)) = :student_code
+                               ORDER BY id DESC
+                               LIMIT 1');
+        $stmt->execute([':student_code' => strtoupper(trim($studentCode))]);
+        $row = $stmt->fetch();
+
+        if ($row) {
+            $submitted = true;
+            $approval = strtolower(trim((string)($row['payment_approved'] ?? '')));
+            $status = strtolower(trim((string)($row['status'] ?? '')));
+            $approved = $approval === 'approved' || in_array($status, ['approved', 'completed', 'success'], true);
+        }
+    } catch (Throwable $error) {
+        error_log('get_student_payment_state warning: ' . $error->getMessage());
+    }
+
+    return [
+        'submitted' => $submitted,
+        'approved' => $approved,
+    ];
+}
+
 function get_gate_eligible_student(PDO $pdo, string $studentCode): ?array
 {
     $studentsTable = staff_student_table_name($pdo);
@@ -162,16 +208,17 @@ function get_gate_eligible_student(PDO $pdo, string $studentCode): ?array
 
     $paymentCompletion = (int)($row['payment_completion'] ?? 0) === 1;
     $paymentApproved = strtolower(trim((string)($row['payment_approved'] ?? 'pending'))) === 'approved';
+    $paymentState = get_student_payment_state($pdo, $studentCode);
+    $paymentSubmitted = $paymentCompletion || $paymentApproved || (bool)($paymentState['submitted'] ?? false);
+    $paymentApprovedFinal = $paymentApproved || (bool)($paymentState['approved'] ?? false);
     $gatePassCreated = (int)($row['gate_pass_created'] ?? 0) === 1;
 
-    $isEligible = $paymentCompletion && $paymentApproved && $gatePassCreated;
+    $isEligible = $paymentSubmitted && $paymentApprovedFinal;
     $reason = '';
-    if (!$paymentCompletion) {
+    if (!$paymentSubmitted) {
         $reason = 'Contribution payment is not submitted';
-    } elseif (!$paymentApproved) {
+    } elseif (!$paymentApprovedFinal) {
         $reason = 'Contribution payment is not approved';
-    } elseif (!$gatePassCreated) {
-        $reason = 'Gate pass is not generated';
     }
 
     return [
@@ -179,8 +226,8 @@ function get_gate_eligible_student(PDO $pdo, string $studentCode): ?array
         'name' => trim((string)($row['name'] ?? '')),
         'department' => trim((string)($row['department'] ?? '')),
         'year' => trim((string)($row['year'] ?? '')),
-        'payment_completion' => $paymentCompletion,
-        'payment_approved' => $paymentApproved,
+        'payment_completion' => $paymentSubmitted,
+        'payment_approved' => $paymentApprovedFinal,
         'gate_pass_created' => $gatePassCreated,
         'eligible' => $isEligible,
         'ineligible_reason' => $reason,
@@ -189,7 +236,14 @@ function get_gate_eligible_student(PDO $pdo, string $studentCode): ?array
 
 function has_gate_entry_for_date(PDO $pdo, string $studentCode, string $entryDate): ?array
 {
-    $stmt = $pdo->prepare('SELECT student_code, student_name, entry_date, entry_at, entry_by, entry_method
+        $stmt = $pdo->prepare('SELECT student_code,
+                                                                    student_name,
+                                                                    student_department,
+                                                                    student_year,
+                                                                    entry_date,
+                                                                    entry_at,
+                                                                    entry_by,
+                                                                    entry_method
                            FROM gate_entry_records
                            WHERE student_code = :student_code
                              AND entry_date = :entry_date
@@ -209,70 +263,175 @@ function staff_gate_volunteer_search(): void
     $studentsTable = staff_student_table_name($pdo);
 
     $query = trim((string)($_GET['query'] ?? ''));
-    if ($query === '') {
-        json_response(['success' => true, 'students' => []]);
-    }
-
     $searchUpper = '%' . strtoupper($query) . '%';
     $compactRaw = preg_replace('/[^A-Za-z0-9]+/', '', $query);
     $compactQuery = strtoupper((string)($compactRaw ?? ''));
     $compactSearch = '%' . $compactQuery . '%';
+
+    if ($query === '') {
         $sql = sprintf('SELECT student_code,
-                                  name,
-                                  department,
-                                  year
-                                                     FROM %s
-                           WHERE TRIM(COALESCE(student_code, "")) <> ""
-                             AND (
-                                 UPPER(COALESCE(name, "")) LIKE :search_upper
-                                 OR UPPER(COALESCE(student_code, "")) LIKE :search_upper
-                                 OR REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(UPPER(COALESCE(student_code, "")), CHAR(92), ""), "/", ""), " ", ""), "-", ""), "_", "") LIKE :search_compact
-                             )
-                           ORDER BY name ASC
-                                                     LIMIT 40', $studentsTable);
-        try {
-            $stmt = $pdo->prepare($sql);
+                               name,
+                               department,
+                               year,
+                               payment_completion,
+                               payment_approved,
+                               gate_pass_created
+                        FROM %s
+                        WHERE TRIM(COALESCE(student_code, "")) <> ""
+                        ORDER BY id DESC', $studentsTable);
+    } else {
+        $sql = sprintf('SELECT student_code,
+                               name,
+                               department,
+                               year,
+                               payment_completion,
+                               payment_approved,
+                               gate_pass_created
+                        FROM %s
+                        WHERE TRIM(COALESCE(student_code, "")) <> ""
+                          AND (
+                              UPPER(COALESCE(name, "")) LIKE :search_upper
+                              OR UPPER(COALESCE(student_code, "")) LIKE :search_upper
+                              OR REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(UPPER(COALESCE(student_code, "")), CHAR(92), ""), "/", ""), " ", ""), "-", ""), "_", "") LIKE :search_compact
+                          )
+                        ORDER BY id DESC
+                        LIMIT 120', $studentsTable);
+    }
+
+    try {
+        $stmt = $pdo->prepare($sql);
+        if ($query === '') {
+            $stmt->execute();
+        } else {
             $stmt->execute([
                 ':search_upper' => $searchUpper,
                 ':search_compact' => $compactSearch,
             ]);
-            $rows = $stmt->fetchAll();
-        } catch (Throwable $error) {
-            error_log('staff_gate_volunteer_search error: ' . $error->getMessage());
-            json_response([
-                'success' => false,
-                'message' => 'Unable to search students right now',
-            ], 500);
         }
+        $rows = $stmt->fetchAll();
+    } catch (Throwable $error) {
+        error_log('staff_gate_volunteer_search error: ' . $error->getMessage());
+        json_response([
+            'success' => false,
+            'message' => 'Unable to search students right now',
+        ], 500);
+    }
+
     if (!is_array($rows)) {
         $rows = [];
     }
 
     $today = gate_entry_today_utc();
-    $students = [];
+
+    $todayEntryStmt = $pdo->prepare('SELECT student_code,
+                                            student_name,
+                                            student_department,
+                                            student_year,
+                                            entry_date,
+                                            entry_at,
+                                            entry_by,
+                                            entry_method
+                                     FROM gate_entry_records
+                                     WHERE entry_date = :entry_date');
+    $todayEntryStmt->execute([':entry_date' => $today]);
+    $todayEntryRows = $todayEntryStmt->fetchAll();
+    $todayEntryMap = [];
+    $paymentStateMap = [];
+
+    if (is_array($todayEntryRows)) {
+        foreach ($todayEntryRows as $entryRow) {
+            $entryCode = strtoupper(trim((string)($entryRow['student_code'] ?? '')));
+            if ($entryCode !== '') {
+                $todayEntryMap[$entryCode] = $entryRow;
+            }
+        }
+    }
+
+    try {
+        $paymentRowsStmt = $pdo->prepare('SELECT UPPER(TRIM(p.student_code)) AS student_code,
+                                                 p.status,
+                                                 p.payment_approved
+                                          FROM payments p
+                                          INNER JOIN (
+                                              SELECT MAX(id) AS max_id
+                                              FROM payments
+                                              WHERE student_code IS NOT NULL
+                                                AND TRIM(student_code) <> ""
+                                              GROUP BY UPPER(TRIM(student_code))
+                                          ) latest ON latest.max_id = p.id');
+        $paymentRowsStmt->execute();
+        $paymentRows = $paymentRowsStmt->fetchAll();
+
+        if (is_array($paymentRows)) {
+            foreach ($paymentRows as $paymentRow) {
+                $paymentCode = strtoupper(trim((string)($paymentRow['student_code'] ?? '')));
+                if ($paymentCode === '') {
+                    continue;
+                }
+
+                $approval = strtolower(trim((string)($paymentRow['payment_approved'] ?? '')));
+                $status = strtolower(trim((string)($paymentRow['status'] ?? '')));
+                $paymentStateMap[$paymentCode] = [
+                    'submitted' => true,
+                    'approved' => $approval === 'approved' || in_array($status, ['approved', 'completed', 'success'], true),
+                ];
+            }
+        }
+    } catch (Throwable $error) {
+        error_log('staff_gate_volunteer_search payment map warning: ' . $error->getMessage());
+    }
+
+    $latestByCode = [];
     foreach ($rows as $row) {
         $studentCode = strtoupper(trim((string)($row['student_code'] ?? '')));
         if ($studentCode === '') {
             continue;
         }
 
-        $student = get_gate_eligible_student($pdo, $studentCode);
-        if (!$student) {
-            continue;
+        if (!isset($latestByCode[$studentCode])) {
+            $latestByCode[$studentCode] = $row;
+        }
+    }
+
+    $students = [];
+    foreach ($latestByCode as $studentCode => $row) {
+        $paymentCompletion = (int)($row['payment_completion'] ?? 0) === 1;
+        $paymentApproved = strtolower(trim((string)($row['payment_approved'] ?? 'pending'))) === 'approved';
+        $paymentState = $paymentStateMap[$studentCode] ?? ['submitted' => false, 'approved' => false];
+        $paymentSubmitted = $paymentCompletion || $paymentApproved || (bool)($paymentState['submitted'] ?? false);
+        $paymentApprovedFinal = $paymentApproved || (bool)($paymentState['approved'] ?? false);
+        $gatePassCreated = (int)($row['gate_pass_created'] ?? 0) === 1;
+
+        $isEligible = $paymentSubmitted && $paymentApprovedFinal;
+        $reason = '';
+        if (!$paymentSubmitted) {
+            $reason = 'Contribution payment is not submitted';
+        } elseif (!$paymentApprovedFinal) {
+            $reason = 'Contribution payment is not approved';
         }
 
-        $todayEntry = has_gate_entry_for_date($pdo, $studentCode, $today);
+        $todayEntry = $todayEntryMap[$studentCode] ?? null;
+
         $students[] = [
             'student_code' => $studentCode,
-            'name' => $student['name'],
-            'department' => $student['department'],
-            'year' => $student['year'],
-            'eligible' => (bool)$student['eligible'],
-            'ineligible_reason' => (string)$student['ineligible_reason'],
+            'name' => trim((string)($row['name'] ?? '')),
+            'department' => trim((string)($row['department'] ?? '')),
+            'year' => trim((string)($row['year'] ?? '')),
+            'eligible' => $isEligible,
+            'ineligible_reason' => $reason,
             'entered_today' => $todayEntry !== null,
             'today_entry' => $todayEntry,
         ];
     }
+
+    usort($students, static function (array $a, array $b): int {
+        $aName = strtolower(trim((string)($a['name'] ?? '')));
+        $bName = strtolower(trim((string)($b['name'] ?? '')));
+        if ($aName === $bName) {
+            return strcmp((string)($a['student_code'] ?? ''), (string)($b['student_code'] ?? ''));
+        }
+        return strcmp($aName, $bName);
+    });
 
     json_response([
         'success' => true,
@@ -286,33 +445,53 @@ function staff_gate_volunteer_entries(): void
     $pdo = db();
     get_authenticated_staff($pdo, ['volunteer']);
 
+    $allRecords = in_array(strtolower(trim((string)($_GET['all'] ?? '0'))), ['1', 'true', 'yes'], true);
     $entryDate = trim((string)($_GET['entry_date'] ?? gate_entry_today_utc()));
-    if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $entryDate) !== 1) {
+    if (!$allRecords && preg_match('/^\d{4}-\d{2}-\d{2}$/', $entryDate) !== 1) {
         json_response(['success' => false, 'message' => 'entry_date must be YYYY-MM-DD'], 422);
     }
 
     $limit = (int)($_GET['limit'] ?? 100);
-    $limit = max(1, min(500, $limit));
+    $limit = max(1, min(50000, $limit));
 
-    $stmt = $pdo->prepare('SELECT id,
-                                  student_code,
-                                  student_name,
-                                  entry_date,
-                                  entry_at,
-                                  entry_by,
-                                  entry_method
-                           FROM gate_entry_records
-                           WHERE entry_date = :entry_date
-                           ORDER BY entry_at DESC
-                           LIMIT :limit');
-    $stmt->bindValue(':entry_date', $entryDate, PDO::PARAM_STR);
+    if ($allRecords) {
+        $stmt = $pdo->prepare('SELECT id,
+                                      student_code,
+                                      student_name,
+                                      student_department,
+                                      student_year,
+                                      entry_date,
+                                      entry_at,
+                                      entry_by,
+                                      entry_method
+                               FROM gate_entry_records
+                               ORDER BY entry_date DESC, entry_at DESC
+                               LIMIT :limit');
+    } else {
+        $stmt = $pdo->prepare('SELECT id,
+                                      student_code,
+                                      student_name,
+                                      student_department,
+                                      student_year,
+                                      entry_date,
+                                      entry_at,
+                                      entry_by,
+                                      entry_method
+                               FROM gate_entry_records
+                               WHERE entry_date = :entry_date
+                               ORDER BY entry_at DESC
+                               LIMIT :limit');
+        $stmt->bindValue(':entry_date', $entryDate, PDO::PARAM_STR);
+    }
+
     $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
     $stmt->execute();
     $rows = $stmt->fetchAll();
 
     json_response([
         'success' => true,
-        'entry_date' => $entryDate,
+        'entry_date' => $allRecords ? null : $entryDate,
+        'all' => $allRecords,
         'records' => is_array($rows) ? $rows : [],
     ]);
 }
@@ -362,6 +541,8 @@ function staff_gate_volunteer_mark_entry(): void
     $insert = $pdo->prepare('INSERT INTO gate_entry_records (
                                 student_code,
                                 student_name,
+                                          student_department,
+                                          student_year,
                                 entry_date,
                                 entry_at,
                                 entry_by,
@@ -369,6 +550,8 @@ function staff_gate_volunteer_mark_entry(): void
                              ) VALUES (
                                 :student_code,
                                 :student_name,
+                                          :student_department,
+                                          :student_year,
                                 :entry_date,
                                 :entry_at,
                                 :entry_by,
@@ -379,6 +562,8 @@ function staff_gate_volunteer_mark_entry(): void
         $insert->execute([
             ':student_code' => $studentCode,
             ':student_name' => (string)$student['name'],
+            ':student_department' => (string)$student['department'],
+            ':student_year' => (string)$student['year'],
             ':entry_date' => $entryDate,
             ':entry_at' => $entryAt,
             ':entry_by' => (string)($staff['username'] ?? 'volunteer'),
@@ -407,6 +592,8 @@ function staff_gate_volunteer_mark_entry(): void
         'entry' => [
             'student_code' => $studentCode,
             'student_name' => (string)$student['name'],
+            'student_department' => (string)$student['department'],
+            'student_year' => (string)$student['year'],
             'entry_date' => $entryDate,
             'entry_at' => $entryAt,
             'entry_by' => (string)($staff['username'] ?? 'volunteer'),

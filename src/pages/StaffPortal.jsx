@@ -1,31 +1,18 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { BrowserQRCodeReader } from '@zxing/browser'
-import jsQR from 'jsqr'
 import { cpanelApi } from '../lib/cpanelApi'
 import './StaffPortal.css'
 
+const GATE_VOLUNTEER_STATIC_PASSWORD = 'password'
+
 const StaffPortal = () => {
   const navigate = useNavigate()
-  const videoRef = useRef(null)
-  const scanLoopRef = useRef(null)
-  const mediaStreamRef = useRef(null)
-  const scanCanvasRef = useRef(null)
-  const isDecodingRef = useRef(false)
-  const zxingReaderRef = useRef(null)
-  const zxingControlsRef = useRef(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState('')
+  const [gateAccessError, setGateAccessError] = useState('')
   const [transactions, setTransactions] = useState([])
   const [pendingList, setPendingList] = useState([])
   const [summary, setSummary] = useState(null)
-
-  const [day, setDay] = useState('day1')
-  const [studentCode, setStudentCode] = useState('')
-  const [qrData, setQrData] = useState('')
-  const [entryMessage, setEntryMessage] = useState('')
-  const [scannerEnabled, setScannerEnabled] = useState(false)
-  const [scannerError, setScannerError] = useState('')
   const [searchText, setSearchText] = useState('')
   const [paymentFilter, setPaymentFilter] = useState('all')
   const [departmentFilter, setDepartmentFilter] = useState('all')
@@ -37,144 +24,20 @@ const StaffPortal = () => {
 
   const isVolunteer = staffRole === 'volunteer'
   const isCr = staffRole === 'cr'
-  const canUseBarcodeDetector = typeof window !== 'undefined' && 'BarcodeDetector' in window
 
-  const stopScanner = () => {
-    if (zxingControlsRef.current) {
-      try {
-        zxingControlsRef.current.stop()
-      } catch {
-        // ignore cleanup errors
-      }
-      zxingControlsRef.current = null
+  const handleOpenGateVolunteerPortal = () => {
+    setGateAccessError('')
+    const verifiedPassword = window.prompt('Re-verify Gate Volunteer password')
+    if (verifiedPassword === null) {
+      return
     }
 
-    if (scanLoopRef.current) {
-      clearInterval(scanLoopRef.current)
-      scanLoopRef.current = null
+    if (String(verifiedPassword) !== GATE_VOLUNTEER_STATIC_PASSWORD) {
+      setGateAccessError('Incorrect Gate Volunteer password')
+      return
     }
 
-    if (mediaStreamRef.current) {
-      mediaStreamRef.current.getTracks().forEach((track) => track.stop())
-      mediaStreamRef.current = null
-    }
-
-    setScannerEnabled(false)
-  }
-
-  const startScanner = async () => {
-    setScannerError('')
-
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          facingMode: { ideal: 'environment' },
-          width: { ideal: 1280 },
-          height: { ideal: 720 }
-        },
-        audio: false
-      })
-
-      mediaStreamRef.current = stream
-      const [track] = stream.getVideoTracks()
-      if (track?.applyConstraints) {
-        try {
-          await track.applyConstraints({
-            advanced: [
-              { focusMode: 'continuous' },
-              { exposureMode: 'continuous' },
-            ]
-          })
-        } catch {
-          // Ignore unsupported advanced constraints.
-        }
-      }
-
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream
-        await videoRef.current.play()
-      }
-
-      if (!zxingReaderRef.current) {
-        zxingReaderRef.current = new BrowserQRCodeReader()
-      }
-
-      const detector = canUseBarcodeDetector
-        ? new window.BarcodeDetector({ formats: ['qr_code'] })
-        : null
-      setScannerEnabled(true)
-
-      if (zxingReaderRef.current && videoRef.current) {
-        try {
-          zxingControlsRef.current = await zxingReaderRef.current.decodeFromVideoElement(
-            videoRef.current,
-            (result) => {
-              const scannedValue = String(result?.getText?.() || '').trim()
-              if (!scannedValue) {
-                return
-              }
-
-              setQrData(scannedValue)
-              setEntryMessage('QR captured from camera. Now click Mark Entry.')
-              stopScanner()
-            }
-          )
-          return
-        } catch {
-          // Fall through to existing detector/jsQR loop.
-        }
-      }
-
-      scanLoopRef.current = setInterval(async () => {
-        try {
-          if (!videoRef.current || isDecodingRef.current) return
-          isDecodingRef.current = true
-          let scannedValue = ''
-
-          if (detector) {
-            const codes = await detector.detect(videoRef.current)
-            if (Array.isArray(codes) && codes[0]?.rawValue) {
-              scannedValue = String(codes[0].rawValue).trim()
-            }
-          } else {
-            const video = videoRef.current
-            const canvas = scanCanvasRef.current || document.createElement('canvas')
-            scanCanvasRef.current = canvas
-
-            const width = video.videoWidth || 0
-            const height = video.videoHeight || 0
-            if (width > 0 && height > 0) {
-              canvas.width = width
-              canvas.height = height
-              const ctx = canvas.getContext('2d', { willReadFrequently: true })
-              if (ctx) {
-                ctx.drawImage(video, 0, 0, width, height)
-                const imageData = ctx.getImageData(0, 0, width, height)
-                const code = jsQR(imageData.data, width, height, {
-                  inversionAttempts: 'attemptBoth'
-                })
-                if (code?.data) {
-                  scannedValue = String(code.data).trim()
-                }
-              }
-            }
-          }
-
-          if (scannedValue) {
-            setQrData(scannedValue)
-            setEntryMessage('QR captured from camera. Now click Mark Entry.')
-            stopScanner()
-          }
-        } catch {
-          // Keep scanning loop alive until stopped.
-        } finally {
-          isDecodingRef.current = false
-        }
-      }, 300)
-    } catch (cameraError) {
-      setScannerError(cameraError?.message || 'Unable to access camera')
-      stopScanner()
-    }
+    navigate('/gate-volunteer-portal')
   }
 
   const loadData = async () => {
@@ -223,7 +86,6 @@ const StaffPortal = () => {
     loadData()
 
     return () => {
-      stopScanner()
       document.body.classList.remove('system-cursor')
     }
   }, [navigate])
@@ -420,25 +282,6 @@ const StaffPortal = () => {
     }
   }
 
-  const handleMarkEntry = async (e) => {
-    e.preventDefault()
-    setEntryMessage('')
-
-    try {
-      const response = await cpanelApi.markGateEntry({
-        token,
-        studentCode,
-        qrData,
-        day
-      })
-      setEntryMessage(response?.message || 'Entry marked')
-      setStudentCode('')
-      setQrData('')
-    } catch (entryError) {
-      setEntryMessage(entryError?.message || 'Unable to mark entry')
-    }
-  }
-
   return (
     <div className="staff-page">
       <div className="hex-grid-overlay" />
@@ -451,12 +294,16 @@ const StaffPortal = () => {
             <p>{staffName} · {staffRole.toUpperCase()}</p>
           </div>
           <div className="staff-actions">
+            {isVolunteer ? (
+              <button type="button" className="staff-btn" onClick={handleOpenGateVolunteerPortal}>Gate Volunteer</button>
+            ) : null}
             <button type="button" className="staff-btn" onClick={loadData}>Refresh</button>
             <button type="button" className="staff-btn staff-btn-danger" onClick={handleLogout}>Logout</button>
           </div>
         </div>
 
         {error ? <div className="staff-error">{error}</div> : null}
+        {gateAccessError ? <div className="staff-error">{gateAccessError}</div> : null}
 
         {isLoading ? <div className="staff-card">Loading...</div> : (
           <>
@@ -620,58 +467,6 @@ const StaffPortal = () => {
                 </table>
               </div>
             </div>
-
-            {isVolunteer ? (
-              <div className="staff-card">
-                <h2>Gate Entry (Volunteer Only)</h2>
-                <p>Scan gate pass QR data or manually type student code. One entry allowed per day.</p>
-
-                <div style={{ marginBottom: '10px' }}>
-                  <Link to="/gate-volunteer-portal" className="staff-home-link">Open Gate Volunteer Portal</Link>
-                </div>
-
-                <form onSubmit={handleMarkEntry} className="gate-form">
-                  <div className="gate-camera-actions">
-                    <button type="button" className="staff-btn" onClick={startScanner} disabled={scannerEnabled}>Start Camera Scan</button>
-                    <button type="button" className="staff-btn" onClick={stopScanner} disabled={!scannerEnabled}>Stop Camera</button>
-                  </div>
-
-                  <video ref={videoRef} className="gate-camera-preview" autoPlay muted playsInline />
-                  {scannerError ? <div className="staff-error">{scannerError}</div> : null}
-
-                  <label>
-                    Day
-                    <select value={day} onChange={(e) => setDay(e.target.value)}>
-                      <option value="day1">Day 1</option>
-                      <option value="day2">Day 2</option>
-                    </select>
-                  </label>
-
-                  <label>
-                    Student Code (Manual)
-                    <input
-                      value={studentCode}
-                      onChange={(e) => setStudentCode(e.target.value)}
-                      placeholder="SKFGI\\2024\\BCA\\0032"
-                    />
-                  </label>
-
-                  <label>
-                    QR Data (Scan Input)
-                    <textarea
-                      value={qrData}
-                      onChange={(e) => setQrData(e.target.value)}
-                      placeholder='Paste scanned QR text or JSON payload'
-                      rows={4}
-                    />
-                  </label>
-
-                  <button type="submit" className="staff-btn">Mark Entry</button>
-                </form>
-
-                {entryMessage ? <div className="staff-info">{entryMessage}</div> : null}
-              </div>
-            ) : null}
 
             <Link to="/" className="staff-home-link">← Back to Home</Link>
           </>

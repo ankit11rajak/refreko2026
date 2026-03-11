@@ -104,6 +104,14 @@ try {
         admin_delete();
     }
 
+    if ($method === 'GET' && $path === '/admin/gate-entries') {
+        admin_gate_entries();
+    }
+
+    if ($method === 'POST' && $path === '/admin/gate-entry/delete') {
+        admin_gate_entry_delete();
+    }
+
     if ($method === 'POST' && $path === '/staff/create') {
         staff_create();
     }

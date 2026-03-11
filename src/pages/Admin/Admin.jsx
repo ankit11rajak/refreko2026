@@ -4,6 +4,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import CustomCursor from '../../components/CustomCursor/CustomCursor'
 import PaymentManagement from '../../components/Admin/PaymentManagement'
 import Analytics from '../../components/Admin/Analytics'
+import GateAnalytics from '../../components/Admin/GateAnalytics'
 import './Admin.css'
 
 const Admin = () => {
@@ -81,6 +82,20 @@ const Admin = () => {
             </svg>
             <span>ANALYTICS</span>
           </motion.button>
+
+          <motion.button
+            className={`nav-tab interactive ${activeTab === 'gate-analytics' ? 'active' : ''}`}
+            onClick={() => setActiveTab('gate-analytics')}
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M3 8l9-5 9 5-9 5-9-5z"/>
+              <path d="M21 12l-9 5-9-5"/>
+              <path d="M21 16l-9 5-9-5"/>
+            </svg>
+            <span>GATE ANALYTICS</span>
+          </motion.button>
         </div>
       </nav>
 
@@ -108,6 +123,18 @@ const Admin = () => {
               transition={{ duration: 0.3 }}
             >
               <Analytics />
+            </motion.div>
+          )}
+
+          {activeTab === 'gate-analytics' && (
+            <motion.div
+              key="gate-analytics"
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 20 }}
+              transition={{ duration: 0.3 }}
+            >
+              <GateAnalytics />
             </motion.div>
           )}
         </AnimatePresence>

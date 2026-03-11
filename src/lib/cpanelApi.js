@@ -306,6 +306,29 @@ export const cpanelApi = {
     })
   },
 
+  adminListGateEntries: async ({ entryDate, search, all = false, limit = 1000, offset = 0 } = {}) => {
+    return request('/admin/gate-entries', {
+      query: {
+        entry_date: entryDate,
+        search,
+        all: all ? 1 : 0,
+        limit,
+        offset
+      },
+      timeout: 60000
+    })
+  },
+
+  adminDeleteGateEntry: async ({ entryId }) => {
+    return request('/admin/gate-entry/delete', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ entry_id: entryId })
+    })
+  },
+
   createStaffAccount: async ({
     name,
     username,
@@ -430,7 +453,8 @@ export const cpanelApi = {
       },
       query: {
         query
-      }
+      },
+      timeout: 60000
     })
   },
 
@@ -443,6 +467,19 @@ export const cpanelApi = {
         entry_date: entryDate,
         limit
       }
+    })
+  },
+
+  gateVolunteerListAllEntries: async ({ token, limit = 50000 }) => {
+    return request('/staff/gate-volunteer/entries', {
+      headers: {
+        Authorization: `Bearer ${token}`
+      },
+      query: {
+        all: 1,
+        limit
+      },
+      timeout: 60000
     })
   },
 

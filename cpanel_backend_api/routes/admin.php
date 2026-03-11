@@ -339,3 +339,124 @@ function admin_delete(): void
 
     json_response(['success' => true, 'message' => 'Admin deleted']);
 }
+
+function admin_gate_entries(): void
+{
+    try {
+        $pdo = db();
+
+        $entryDate = trim((string)($_GET['entry_date'] ?? ''));
+        $search = trim((string)($_GET['search'] ?? ''));
+        $allRecords = in_array(strtolower(trim((string)($_GET['all'] ?? '0'))), ['1', 'true', 'yes'], true);
+
+        $limit = (int)($_GET['limit'] ?? 500);
+        $offset = (int)($_GET['offset'] ?? 0);
+        $limit = max(1, min(50000, $limit));
+        $offset = max(0, $offset);
+
+        $where = [];
+        $params = [];
+
+        if (!$allRecords && $entryDate !== '') {
+            if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $entryDate) !== 1) {
+                json_response(['success' => false, 'message' => 'entry_date must be YYYY-MM-DD'], 422);
+            }
+            $where[] = 'entry_date = :entry_date';
+            $params[':entry_date'] = $entryDate;
+        }
+
+        if ($search !== '') {
+            $where[] = '(UPPER(COALESCE(student_code, "")) LIKE :search
+                        OR UPPER(COALESCE(student_name, "")) LIKE :search
+                        OR UPPER(COALESCE(student_department, "")) LIKE :search
+                        OR UPPER(COALESCE(student_year, "")) LIKE :search
+                        OR UPPER(COALESCE(entry_by, "")) LIKE :search)';
+            $params[':search'] = '%' . strtoupper($search) . '%';
+        }
+
+        $whereSql = '';
+        if (!empty($where)) {
+            $whereSql = ' WHERE ' . implode(' AND ', $where);
+        }
+
+        $countStmt = $pdo->prepare('SELECT COUNT(*) AS total FROM gate_entry_records' . $whereSql);
+        foreach ($params as $key => $value) {
+            $countStmt->bindValue($key, $value, PDO::PARAM_STR);
+        }
+        $countStmt->execute();
+        $countRow = $countStmt->fetch();
+        $total = (int)($countRow['total'] ?? 0);
+
+        $sql = 'SELECT id,
+                       student_code,
+                       student_name,
+                       student_department,
+                       student_year,
+                       entry_date,
+                       entry_at,
+                       entry_by,
+                       entry_method,
+                       created_at
+                FROM gate_entry_records'
+             . $whereSql .
+               ' ORDER BY entry_date DESC, entry_at DESC
+                 LIMIT :limit OFFSET :offset';
+
+        $stmt = $pdo->prepare($sql);
+        foreach ($params as $key => $value) {
+            $stmt->bindValue($key, $value, PDO::PARAM_STR);
+        }
+        $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
+        $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
+        $stmt->execute();
+        $rows = $stmt->fetchAll();
+
+        json_response([
+            'success' => true,
+            'records' => is_array($rows) ? $rows : [],
+            'total' => $total,
+            'limit' => $limit,
+            'offset' => $offset,
+            'has_more' => ($offset + (is_array($rows) ? count($rows) : 0)) < $total,
+        ]);
+    } catch (Throwable $error) {
+        json_response([
+            'success' => false,
+            'message' => 'Unable to fetch gate entry records',
+            'error' => $error->getMessage(),
+        ], 500);
+    }
+}
+
+function admin_gate_entry_delete(): void
+{
+    $payload = get_json_input();
+    require_fields($payload, ['entry_id']);
+
+    $entryId = (int)($payload['entry_id'] ?? 0);
+    if ($entryId <= 0) {
+        json_response(['success' => false, 'message' => 'Valid entry_id is required'], 422);
+    }
+
+    try {
+        $pdo = db();
+        $stmt = $pdo->prepare('DELETE FROM gate_entry_records WHERE id = :id LIMIT 1');
+        $stmt->execute([':id' => $entryId]);
+
+        if ($stmt->rowCount() === 0) {
+            json_response(['success' => false, 'message' => 'Entry not found'], 404);
+        }
+
+        json_response([
+            'success' => true,
+            'message' => 'Gate entry deleted successfully',
+            'entry_id' => $entryId,
+        ]);
+    } catch (Throwable $error) {
+        json_response([
+            'success' => false,
+            'message' => 'Unable to delete gate entry',
+            'error' => $error->getMessage(),
+        ], 500);
+    }
+}

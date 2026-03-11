@@ -31,7 +31,7 @@ const GateVolunteerPortal = () => {
 
   const [searchText, setSearchText] = useState('')
   const [searchLoading, setSearchLoading] = useState(false)
-  const [searchResults, setSearchResults] = useState([])
+  const [studentDirectory, setStudentDirectory] = useState([])
 
   const [manualStudentCode, setManualStudentCode] = useState('')
   const [qrInput, setQrInput] = useState('')
@@ -44,6 +44,29 @@ const GateVolunteerPortal = () => {
   const [imageScanLoading, setImageScanLoading] = useState(false)
   const [imageScanError, setImageScanError] = useState('')
   const [resolvedStudent, setResolvedStudent] = useState(null)
+  const [isExportingPdf, setIsExportingPdf] = useState(false)
+  const [isExportingExcel, setIsExportingExcel] = useState(false)
+
+  const activeTabHint = useMemo(() => {
+    if (activeTab === 'scan') return 'Scan from camera, photo, or paste QR payload'
+    if (activeTab === 'search') return 'All students are loaded below. Search and grant entry quickly.'
+    return 'Review all gate entries for selected date'
+  }, [activeTab])
+
+  const filteredSearchResults = useMemo(() => {
+    const query = String(searchText || '').trim().toLowerCase()
+    if (!query) {
+      return studentDirectory
+    }
+
+    return studentDirectory.filter((student) => {
+      const code = String(student?.student_code || '').toLowerCase()
+      const name = String(student?.name || '').toLowerCase()
+      const department = String(student?.department || '').toLowerCase()
+      const year = String(student?.year || '').toLowerCase()
+      return code.includes(query) || name.includes(query) || department.includes(query) || year.includes(query)
+    })
+  }, [studentDirectory, searchText])
 
   const canUseBarcodeDetector = useMemo(
     () => typeof window !== 'undefined' && 'BarcodeDetector' in window,
@@ -88,6 +111,11 @@ const GateVolunteerPortal = () => {
       limit: 200
     })
     setRecords(Array.isArray(response?.records) ? response.records : [])
+  }
+
+  const loadStudentDirectory = async () => {
+    const response = await cpanelApi.gateVolunteerSearchStudents({ token, query: '' })
+    setStudentDirectory(Array.isArray(response?.students) ? response.students : [])
   }
 
   const resolveDetectedStudent = async ({ qrData, studentCode, autoGrant = false }) => {
@@ -145,7 +173,10 @@ const GateVolunteerPortal = () => {
     setPortalError('')
 
     try {
-      await loadRecords(entryDate)
+      await Promise.all([
+        loadRecords(entryDate),
+        loadStudentDirectory()
+      ])
     } catch (error) {
       setPortalError(error?.message || 'Unable to load gate records')
       if (error?.status === 401) {
@@ -372,20 +403,13 @@ const GateVolunteerPortal = () => {
 
   const handleSearch = async (e) => {
     e.preventDefault()
-    const query = String(searchText || '').trim()
-    setSearchResults([])
-
-    if (query.length < 2) {
-      return
-    }
 
     setSearchLoading(true)
     setEntryError('')
     setEntryMessage('')
 
     try {
-      const response = await cpanelApi.gateVolunteerSearchStudents({ token, query })
-      setSearchResults(Array.isArray(response?.students) ? response.students : [])
+      await loadStudentDirectory()
     } catch (error) {
       setEntryError(error?.message || 'Student search failed')
     } finally {
@@ -410,7 +434,7 @@ const GateVolunteerPortal = () => {
       setManualStudentCode('')
       setQrInput('')
       setSearchText('')
-      setSearchResults([])
+      await loadStudentDirectory()
       setResolvedStudent(null)
       await loadRecords(entryDate)
     } catch (error) {
@@ -442,6 +466,151 @@ const GateVolunteerPortal = () => {
     })
   }
 
+  const fetchAllEntryRecordsForExport = async () => {
+    const response = await cpanelApi.gateVolunteerListAllEntries({ token, limit: 50000 })
+    return Array.isArray(response?.records) ? response.records : []
+  }
+
+  const createExcelHtmlTable = (rows) => {
+    const escapeHtml = (value) => String(value ?? '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;')
+
+    const tableRows = rows.map((row) => `
+      <tr>
+        <td>${escapeHtml(row.entry_date)}</td>
+        <td>${escapeHtml(row.entry_at)}</td>
+        <td>${escapeHtml(row.student_name)}</td>
+        <td>${escapeHtml(row.student_code)}</td>
+        <td>${escapeHtml(row.student_department || '-')}</td>
+        <td>${escapeHtml(row.student_year || '-')}</td>
+        <td>${escapeHtml(row.entry_method)}</td>
+        <td>${escapeHtml(row.entry_by)}</td>
+      </tr>
+    `).join('')
+
+    return `
+      <html>
+        <head>
+          <meta charset="utf-8" />
+          <style>
+            table { border-collapse: collapse; width: 100%; font-family: Arial, sans-serif; }
+            th, td { border: 1px solid #ccc; padding: 6px; text-align: left; font-size: 12px; }
+            th { background: #f2f2f2; }
+          </style>
+        </head>
+        <body>
+          <h3>Gate Entry Records</h3>
+          <table>
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Time</th>
+                <th>Student</th>
+                <th>Code</th>
+                <th>Department</th>
+                <th>Year</th>
+                <th>Method</th>
+                <th>By</th>
+              </tr>
+            </thead>
+            <tbody>${tableRows}</tbody>
+          </table>
+        </body>
+      </html>
+    `
+  }
+
+  const downloadFile = ({ content, mimeType, fileName }) => {
+    const blob = new Blob([content], { type: mimeType })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = fileName
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    URL.revokeObjectURL(url)
+  }
+
+  const handleExportExcel = async () => {
+    setEntryError('')
+    setEntryMessage('')
+    setIsExportingExcel(true)
+
+    try {
+      const rows = await fetchAllEntryRecordsForExport()
+      if (rows.length === 0) {
+        setEntryError('No entry records available to export')
+        return
+      }
+
+      const html = createExcelHtmlTable(rows)
+      const today = new Date().toISOString().slice(0, 10)
+      downloadFile({
+        content: html,
+        mimeType: 'application/vnd.ms-excel;charset=utf-8',
+        fileName: `gate_entry_records_${today}.xls`
+      })
+      setEntryMessage(`Exported ${rows.length} records to Excel`)
+    } catch (error) {
+      setEntryError(error?.message || 'Unable to export Excel file')
+    } finally {
+      setIsExportingExcel(false)
+    }
+  }
+
+  const handleExportPdf = async () => {
+    setEntryError('')
+    setEntryMessage('')
+    setIsExportingPdf(true)
+
+    try {
+      const rows = await fetchAllEntryRecordsForExport()
+      if (rows.length === 0) {
+        setEntryError('No entry records available to export')
+        return
+      }
+
+      const [{ default: jsPDF }, { default: autoTable }] = await Promise.all([
+        import('jspdf'),
+        import('jspdf-autotable')
+      ])
+
+      const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'a4' })
+      doc.setFontSize(12)
+      doc.text('Gate Entry Records', 40, 36)
+
+      autoTable(doc, {
+        startY: 50,
+        head: [['Date', 'Time', 'Student', 'Code', 'Department', 'Year', 'Method', 'By']],
+        body: rows.map((row) => [
+          row.entry_date || '',
+          row.entry_at || '',
+          row.student_name || '',
+          row.student_code || '',
+          row.student_department || '-',
+          row.student_year || '-',
+          row.entry_method || '',
+          row.entry_by || ''
+        ]),
+        styles: { fontSize: 8, cellPadding: 4 },
+        headStyles: { fillColor: [74, 20, 140] }
+      })
+
+      const today = new Date().toISOString().slice(0, 10)
+      doc.save(`gate_entry_records_${today}.pdf`)
+      setEntryMessage(`Exported ${rows.length} records to PDF`)
+    } catch (error) {
+      setEntryError(error?.message || 'Unable to export PDF file')
+    } finally {
+      setIsExportingPdf(false)
+    }
+  }
+
   if (isLoading) {
     return <div className="gate-volunteer-page"><div className="gate-card">Loading gate volunteer portal...</div></div>
   }
@@ -464,11 +633,13 @@ const GateVolunteerPortal = () => {
         </header>
 
         <section className="gate-card">
-          <div className="gate-tabs">
+          <div className="gate-tabs" role="tablist" aria-label="Gate volunteer sections">
             <button
               type="button"
               className={`gate-tab-btn ${activeTab === 'scan' ? 'is-active' : ''}`}
               onClick={() => setActiveTab('scan')}
+              role="tab"
+              aria-selected={activeTab === 'scan'}
             >
               Scan QR
             </button>
@@ -476,17 +647,25 @@ const GateVolunteerPortal = () => {
               type="button"
               className={`gate-tab-btn ${activeTab === 'search' ? 'is-active' : ''}`}
               onClick={() => setActiveTab('search')}
+              role="tab"
+              aria-selected={activeTab === 'search'}
             >
               Search Student
             </button>
             <button
               type="button"
               className={`gate-tab-btn ${activeTab === 'records' ? 'is-active' : ''}`}
-              onClick={() => setActiveTab('records')}
+              onClick={async () => {
+                setActiveTab('records')
+                await loadRecords(entryDate)
+              }}
+              role="tab"
+              aria-selected={activeTab === 'records'}
             >
-              View Records
+              View Records ({records.length})
             </button>
           </div>
+          <p className="gate-tab-hint">{activeTabHint}</p>
         </section>
 
         {portalError ? <div className="gate-alert gate-alert-error">{portalError}</div> : null}
@@ -496,31 +675,37 @@ const GateVolunteerPortal = () => {
           <h2>Scan Or Enter QR</h2>
           <p>Entry is granted only for students with paid and approved contribution. One QR is valid once per day.</p>
 
-          <div className="scanner-actions">
-            <button type="button" className="gate-btn" onClick={startScanner} disabled={scannerEnabled}>Start Camera Scan</button>
-            <button type="button" className="gate-btn gate-btn-muted" onClick={stopScanner} disabled={!scannerEnabled}>Stop Camera</button>
-            <button
-              type="button"
-              className="gate-btn"
-              onClick={() => uploadInputRef.current?.click()}
-              disabled={imageScanLoading}
-            >
-              {imageScanLoading ? 'Processing Photo...' : 'Scan From Photo'}
-            </button>
-            <input
-              ref={uploadInputRef}
-              type="file"
-              accept="image/*"
-              onChange={handleQrImageUpload}
-              className="scanner-upload-input"
-            />
+          <div className="scan-tools">
+            <p className="scan-tools-title">Scan Selection</p>
+            <div className="scanner-actions">
+              <button type="button" className="gate-btn" onClick={startScanner} disabled={scannerEnabled}>Start Camera Scan</button>
+              <button type="button" className="gate-btn gate-btn-muted" onClick={stopScanner} disabled={!scannerEnabled}>Stop Camera</button>
+              <button
+                type="button"
+                className="gate-btn"
+                onClick={() => uploadInputRef.current?.click()}
+                disabled={imageScanLoading}
+              >
+                {imageScanLoading ? 'Processing Photo...' : 'Scan From Photo'}
+              </button>
+              <input
+                ref={uploadInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handleQrImageUpload}
+                className="scanner-upload-input"
+              />
+            </div>
           </div>
 
-          <video ref={videoRef} className="scanner-preview" autoPlay muted playsInline />
+          <div className="scanner-preview-wrap">
+            <video ref={videoRef} className="scanner-preview" autoPlay muted playsInline />
+          </div>
           {scannerError ? <div className="gate-alert gate-alert-error">{scannerError}</div> : null}
           {imageScanError ? <div className="gate-alert gate-alert-error">{imageScanError}</div> : null}
 
           <form onSubmit={handleManualEntry} className="manual-entry-form">
+            <p className="manual-entry-title">Manual Selection</p>
             <label>
               Student Code
               <input
@@ -550,7 +735,7 @@ const GateVolunteerPortal = () => {
           </form>
 
           {resolvedStudent ? (
-            <div className="search-item" style={{ marginTop: '10px' }}>
+            <div className="search-item resolved-student-card">
               <div>
                 <strong>{resolvedStudent.name}</strong>
                 <p>{resolvedStudent.student_code} · {resolvedStudent.department || '-'} · {resolvedStudent.year || '-'}</p>
@@ -574,15 +759,23 @@ const GateVolunteerPortal = () => {
               name="searchQuery"
               value={searchText}
               onChange={(e) => setSearchText(e.target.value)}
-              placeholder="Enter student name or code"
+              placeholder="Type name, code, department, or year"
             />
             <button type="submit" className="gate-btn" disabled={searchLoading}>
-              {searchLoading ? 'Searching...' : 'Search'}
+              {searchLoading ? 'Refreshing...' : 'Refresh List'}
             </button>
           </form>
 
+          <p className="search-meta">
+            Loaded students: {studentDirectory.length} | Showing: {filteredSearchResults.length}
+          </p>
+
           <div className="search-list">
-            {searchResults.map((student) => (
+            {filteredSearchResults.length === 0 && !searchLoading ? (
+              <div className="search-empty">No students match the current search.</div>
+            ) : null}
+
+            {filteredSearchResults.map((student) => (
               <div key={student.student_code} className="search-item">
                 <div>
                   <strong>{student.name}</strong>
@@ -622,6 +815,25 @@ const GateVolunteerPortal = () => {
                 }}
               />
             </label>
+            <div className="records-toolbar-right">
+              <div className="records-count-chip">{records.length} records</div>
+              <button
+                type="button"
+                className="gate-btn"
+                onClick={handleExportExcel}
+                disabled={isExportingExcel || isExportingPdf}
+              >
+                {isExportingExcel ? 'Exporting Excel...' : 'Export Excel'}
+              </button>
+              <button
+                type="button"
+                className="gate-btn"
+                onClick={handleExportPdf}
+                disabled={isExportingPdf || isExportingExcel}
+              >
+                {isExportingPdf ? 'Exporting PDF...' : 'Export PDF'}
+              </button>
+            </div>
           </div>
 
           <div className="table-wrap">
@@ -631,6 +843,8 @@ const GateVolunteerPortal = () => {
                   <th>Time</th>
                   <th>Student</th>
                   <th>Code</th>
+                  <th>Department</th>
+                  <th>Year</th>
                   <th>Method</th>
                   <th>By</th>
                 </tr>
@@ -638,13 +852,15 @@ const GateVolunteerPortal = () => {
               <tbody>
                 {records.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="empty-row">No entries found for selected date</td>
+                    <td colSpan={7} className="empty-row">No entries found for selected date</td>
                   </tr>
                 ) : records.map((record) => (
                   <tr key={record.id}>
                     <td>{record.entry_at}</td>
                     <td>{record.student_name}</td>
                     <td>{record.student_code}</td>
+                    <td>{record.student_department || '-'}</td>
+                    <td>{record.student_year || '-'}</td>
                     <td>{record.entry_method}</td>
                     <td>{record.entry_by}</td>
                   </tr>

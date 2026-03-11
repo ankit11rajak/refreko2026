@@ -103,6 +103,8 @@ CREATE TABLE IF NOT EXISTS gate_entry_records (
   id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   student_code VARCHAR(64) NOT NULL,
   student_name VARCHAR(160) NOT NULL,
+  student_department VARCHAR(120) NULL,
+  student_year VARCHAR(30) NULL,
   entry_date DATE NOT NULL,
   entry_at DATETIME NOT NULL,
   entry_by VARCHAR(120) NOT NULL,
