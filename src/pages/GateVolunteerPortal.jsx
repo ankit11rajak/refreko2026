@@ -30,6 +30,8 @@ const GateVolunteerPortal = () => {
   const [activeTab, setActiveTab] = useState('scan')
 
   const [searchText, setSearchText] = useState('')
+  const [searchDepartmentFilter, setSearchDepartmentFilter] = useState('all')
+  const [searchYearFilter, setSearchYearFilter] = useState('all')
   const [searchLoading, setSearchLoading] = useState(false)
   const [studentDirectory, setStudentDirectory] = useState([])
 
@@ -46,6 +48,26 @@ const GateVolunteerPortal = () => {
   const [resolvedStudent, setResolvedStudent] = useState(null)
   const [isExportingPdf, setIsExportingPdf] = useState(false)
   const [isExportingExcel, setIsExportingExcel] = useState(false)
+  const [recordDepartmentFilter, setRecordDepartmentFilter] = useState('all')
+  const [recordYearFilter, setRecordYearFilter] = useState('all')
+
+  const searchDepartmentOptions = useMemo(() => {
+    const values = Array.from(new Set(
+      studentDirectory
+        .map((student) => String(student?.department || '').trim())
+        .filter(Boolean)
+    ))
+    return values.sort((a, b) => a.localeCompare(b))
+  }, [studentDirectory])
+
+  const searchYearOptions = useMemo(() => {
+    const values = Array.from(new Set(
+      studentDirectory
+        .map((student) => String(student?.year || '').trim())
+        .filter(Boolean)
+    ))
+    return values.sort((a, b) => a.localeCompare(b))
+  }, [studentDirectory])
 
   const activeTabHint = useMemo(() => {
     if (activeTab === 'scan') return 'Scan from camera, photo, or paste QR payload'
@@ -55,18 +77,57 @@ const GateVolunteerPortal = () => {
 
   const filteredSearchResults = useMemo(() => {
     const query = String(searchText || '').trim().toLowerCase()
-    if (!query) {
-      return studentDirectory
-    }
-
     return studentDirectory.filter((student) => {
       const code = String(student?.student_code || '').toLowerCase()
       const name = String(student?.name || '').toLowerCase()
       const department = String(student?.department || '').toLowerCase()
       const year = String(student?.year || '').toLowerCase()
-      return code.includes(query) || name.includes(query) || department.includes(query) || year.includes(query)
+
+      const matchesQuery = !query
+        || code.includes(query)
+        || name.includes(query)
+        || department.includes(query)
+        || year.includes(query)
+
+      const matchesDepartment = searchDepartmentFilter === 'all'
+        || String(student?.department || '').trim() === searchDepartmentFilter
+
+      const matchesYear = searchYearFilter === 'all'
+        || String(student?.year || '').trim() === searchYearFilter
+
+      return matchesQuery && matchesDepartment && matchesYear
     })
-  }, [studentDirectory, searchText])
+  }, [studentDirectory, searchText, searchDepartmentFilter, searchYearFilter])
+
+  const recordDepartmentOptions = useMemo(() => {
+    const values = Array.from(new Set(
+      studentDirectory
+        .map((student) => String(student?.department || '').trim())
+        .filter(Boolean)
+    ))
+    return values.sort((a, b) => a.localeCompare(b))
+  }, [studentDirectory])
+
+  const recordYearOptions = useMemo(() => {
+    const values = Array.from(new Set(
+      studentDirectory
+        .map((student) => String(student?.year || '').trim())
+        .filter(Boolean)
+    ))
+    return values.sort((a, b) => a.localeCompare(b))
+  }, [studentDirectory])
+
+  const filteredRecords = useMemo(() => {
+    return records.filter((record) => {
+      const matchesDepartment = recordDepartmentFilter === 'all'
+        || String(record?.student_department || '').trim() === recordDepartmentFilter
+
+      const matchesYear = recordYearFilter === 'all'
+        || String(record?.student_year || '').trim() === recordYearFilter
+
+      return matchesDepartment && matchesYear
+    })
+  }, [records, recordDepartmentFilter, recordYearFilter])
 
   const canUseBarcodeDetector = useMemo(
     () => typeof window !== 'undefined' && 'BarcodeDetector' in window,
@@ -471,6 +532,16 @@ const GateVolunteerPortal = () => {
     return Array.isArray(response?.records) ? response.records : []
   }
 
+  const filterRowsForRecordExport = (rows) => rows.filter((row) => {
+    const matchesDate = String(row?.entry_date || '') === String(entryDate || '')
+    const matchesDepartment = recordDepartmentFilter === 'all'
+      || String(row?.student_department || '').trim() === recordDepartmentFilter
+    const matchesYear = recordYearFilter === 'all'
+      || String(row?.student_year || '').trim() === recordYearFilter
+
+    return matchesDate && matchesDepartment && matchesYear
+  })
+
   const createExcelHtmlTable = (rows) => {
     const escapeHtml = (value) => String(value ?? '')
       .replace(/&/g, '&amp;')
@@ -542,7 +613,8 @@ const GateVolunteerPortal = () => {
     setIsExportingExcel(true)
 
     try {
-      const rows = await fetchAllEntryRecordsForExport()
+      const allRows = await fetchAllEntryRecordsForExport()
+      const rows = filterRowsForRecordExport(allRows)
       if (rows.length === 0) {
         setEntryError('No entry records available to export')
         return
@@ -569,7 +641,8 @@ const GateVolunteerPortal = () => {
     setIsExportingPdf(true)
 
     try {
-      const rows = await fetchAllEntryRecordsForExport()
+      const allRows = await fetchAllEntryRecordsForExport()
+      const rows = filterRowsForRecordExport(allRows)
       if (rows.length === 0) {
         setEntryError('No entry records available to export')
         return
@@ -766,6 +839,27 @@ const GateVolunteerPortal = () => {
             </button>
           </form>
 
+          <div className="search-filter-row">
+            <label>
+              Department
+              <select value={searchDepartmentFilter} onChange={(e) => setSearchDepartmentFilter(e.target.value)}>
+                <option value="all">All Departments</option>
+                {searchDepartmentOptions.map((department) => (
+                  <option key={department} value={department}>{department}</option>
+                ))}
+              </select>
+            </label>
+            <label>
+              Year
+              <select value={searchYearFilter} onChange={(e) => setSearchYearFilter(e.target.value)}>
+                <option value="all">All Years</option>
+                {searchYearOptions.map((year) => (
+                  <option key={year} value={year}>{year}</option>
+                ))}
+              </select>
+            </label>
+          </div>
+
           <p className="search-meta">
             Loaded students: {studentDirectory.length} | Showing: {filteredSearchResults.length}
           </p>
@@ -801,22 +895,42 @@ const GateVolunteerPortal = () => {
         <section className="gate-card">
           <h2>Entry Records</h2>
           <div className="records-toolbar">
-            <label>
-              Date
-              <input
-                id="gate-entry-date"
-                name="entryDate"
-                type="date"
-                value={entryDate}
-                onChange={async (e) => {
-                  const nextDate = e.target.value
-                  setEntryDate(nextDate)
-                  await loadRecords(nextDate)
-                }}
-              />
-            </label>
+            <div className="records-toolbar-filters">
+              <label>
+                Date
+                <input
+                  id="gate-entry-date"
+                  name="entryDate"
+                  type="date"
+                  value={entryDate}
+                  onChange={async (e) => {
+                    const nextDate = e.target.value
+                    setEntryDate(nextDate)
+                    await loadRecords(nextDate)
+                  }}
+                />
+              </label>
+              <label>
+                Department
+                <select value={recordDepartmentFilter} onChange={(e) => setRecordDepartmentFilter(e.target.value)}>
+                  <option value="all">All Departments</option>
+                  {recordDepartmentOptions.map((department) => (
+                    <option key={department} value={department}>{department}</option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                Year
+                <select value={recordYearFilter} onChange={(e) => setRecordYearFilter(e.target.value)}>
+                  <option value="all">All Years</option>
+                  {recordYearOptions.map((year) => (
+                    <option key={year} value={year}>{year}</option>
+                  ))}
+                </select>
+              </label>
+            </div>
             <div className="records-toolbar-right">
-              <div className="records-count-chip">{records.length} records</div>
+              <div className="records-count-chip">{filteredRecords.length} shown / {records.length} records</div>
               <button
                 type="button"
                 className="gate-btn"
@@ -850,11 +964,11 @@ const GateVolunteerPortal = () => {
                 </tr>
               </thead>
               <tbody>
-                {records.length === 0 ? (
+                {filteredRecords.length === 0 ? (
                   <tr>
                     <td colSpan={7} className="empty-row">No entries found for selected date</td>
                   </tr>
-                ) : records.map((record) => (
+                ) : filteredRecords.map((record) => (
                   <tr key={record.id}>
                     <td>{record.entry_at}</td>
                     <td>{record.student_name}</td>

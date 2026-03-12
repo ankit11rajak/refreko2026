@@ -83,6 +83,15 @@
   padding: 10px;
 }
 
+.gate-analytics-filters select {
+  min-width: 180px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--color-text);
+  border-radius: 8px;
+  padding: 10px;
+}
+
 .search-label input {
   min-width: 280px;
 }

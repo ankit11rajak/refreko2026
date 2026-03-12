@@ -60,6 +60,10 @@ try {
         students_get_one();
     }
 
+    if ($method === 'GET' && $path === '/students/gate-entry-today') {
+        students_gate_entry_today();
+    }
+
     if ($method === 'GET' && $path === '/students/list') {
         students_list();
     }

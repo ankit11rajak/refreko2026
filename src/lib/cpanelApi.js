@@ -202,6 +202,15 @@ export const cpanelApi = {
     })
   },
 
+  getStudentGateEntryToday: async (studentCode) => {
+    if (!studentCode) {
+      throw new Error('Student code is required')
+    }
+    return request('/students/gate-entry-today', {
+      query: { student_code: studentCode }
+    })
+  },
+
   listStudents: async ({ search, status = 'all', limit = 500, offset = 0 } = {}) => {
     return request('/students/list', {
       query: { search, status, limit, offset }

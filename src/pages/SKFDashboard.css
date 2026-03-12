@@ -2728,3 +2728,24 @@ body {
     font-size: 0.8rem;
   }
 }
+
+
+  .today-access-granted-card {
+    margin-top: 16px;
+    border: 1px solid rgba(76, 175, 80, 0.45);
+    background: rgba(76, 175, 80, 0.12);
+    border-radius: 10px;
+    padding: 12px 14px;
+  }
+
+  .today-access-granted-card h3 {
+    margin: 0 0 6px;
+    font-size: 1rem;
+    color: #b8f6be;
+  }
+
+  .today-access-granted-card p {
+    margin: 0;
+    color: #e2ffe4;
+    font-size: 0.9rem;
+  }

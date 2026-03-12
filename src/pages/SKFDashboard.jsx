@@ -9,6 +9,8 @@ import { getActivePaymentOption, loadPaymentConfig } from '../lib/paymentConfig'
 import { loadPaymentConfigWithApi } from '../lib/paymentConfigApi'
 import './SKFDashboard.css'
 
+const GOOGLE_WALLET_TEMP_DISABLED = true
+
 const parseBoolish = (value) => {
   if (value === true || value === 1 || value === '1') return true
   const normalized = String(value ?? '').trim().toLowerCase()
@@ -56,7 +58,56 @@ const SKFDashboard = () => {
   const [avatarLoadFailed, setAvatarLoadFailed] = useState(false)
   const [googleWalletLoading, setGoogleWalletLoading] = useState(false)
   const [googleWalletError, setGoogleWalletError] = useState('')
+  const [todayGateEntry, setTodayGateEntry] = useState(null)
   const receiptCardRef = useRef(null)
+  const latestGateEntryIdRef = useRef(null)
+  const hasGateEntryInitialFetchRef = useRef(false)
+  const audioContextRef = useRef(null)
+
+  const triggerAccessGrantedAlert = () => {
+    try {
+      if (typeof window !== 'undefined' && typeof window.navigator !== 'undefined' && typeof window.navigator.vibrate === 'function') {
+        window.navigator.vibrate([200, 120, 260, 120, 200])
+      }
+    } catch {
+      // ignore vibration errors
+    }
+
+    try {
+      const AudioContextClass = window.AudioContext || window.webkitAudioContext
+      if (!AudioContextClass) {
+        return
+      }
+
+      if (!audioContextRef.current) {
+        audioContextRef.current = new AudioContextClass()
+      }
+
+      const audioContext = audioContextRef.current
+      if (audioContext.state === 'suspended') {
+        audioContext.resume()
+      }
+
+      const oscillator = audioContext.createOscillator()
+      const gainNode = audioContext.createGain()
+
+      oscillator.type = 'sine'
+      oscillator.frequency.value = 880
+      gainNode.gain.value = 0.001
+
+      oscillator.connect(gainNode)
+      gainNode.connect(audioContext.destination)
+
+      const now = audioContext.currentTime
+      gainNode.gain.exponentialRampToValueAtTime(0.12, now + 0.03)
+      gainNode.gain.exponentialRampToValueAtTime(0.001, now + 0.45)
+
+      oscillator.start(now)
+      oscillator.stop(now + 0.5)
+    } catch {
+      // ignore audio autoplay restrictions
+    }
+  }
 
   const activePaymentOption = useMemo(
     () => getActivePaymentOption(paymentConfig),
@@ -397,6 +448,77 @@ const SKFDashboard = () => {
     setAvatarLoadFailed(false)
   }, [studentGravatarUrl])
 
+  useEffect(() => {
+    const unlockAudio = async () => {
+      try {
+        const AudioContextClass = window.AudioContext || window.webkitAudioContext
+        if (!AudioContextClass) {
+          return
+        }
+
+        if (!audioContextRef.current) {
+          audioContextRef.current = new AudioContextClass()
+        }
+
+        if (audioContextRef.current.state === 'suspended') {
+          await audioContextRef.current.resume()
+        }
+      } catch {
+        // ignore unlock errors
+      }
+    }
+
+    window.addEventListener('pointerdown', unlockAudio, { once: true })
+    return () => {
+      window.removeEventListener('pointerdown', unlockAudio)
+    }
+  }, [])
+
+  useEffect(() => {
+    const studentCode = String(student.studentId || '').trim().toUpperCase()
+    if (!studentCode || !cpanelApi.isConfigured()) {
+      setTodayGateEntry(null)
+      latestGateEntryIdRef.current = null
+      hasGateEntryInitialFetchRef.current = false
+      return
+    }
+
+    let isActive = true
+
+    const fetchTodayGateEntry = async () => {
+      try {
+        const response = await cpanelApi.getStudentGateEntryToday(studentCode)
+        if (!isActive) return
+
+        const entry = response?.entry || null
+        setTodayGateEntry(entry)
+
+        const nextEntryId = entry?.id ? String(entry.id) : null
+        const previousEntryId = latestGateEntryIdRef.current
+        const shouldAlert = hasGateEntryInitialFetchRef.current && nextEntryId && previousEntryId !== nextEntryId
+
+        if (shouldAlert) {
+          triggerAccessGrantedAlert()
+        }
+
+        latestGateEntryIdRef.current = nextEntryId
+        hasGateEntryInitialFetchRef.current = true
+      } catch {
+        if (isActive) {
+          setTodayGateEntry(null)
+        }
+      }
+    }
+
+    fetchTodayGateEntry()
+    const intervalId = setInterval(fetchTodayGateEntry, 20000)
+
+    return () => {
+      isActive = false
+      clearInterval(intervalId)
+    }
+  }, [student.studentId])
+
   const handleLogout = () => {
     // Clear authentication data
     localStorage.removeItem('isAuthenticated')
@@ -410,6 +532,11 @@ const SKFDashboard = () => {
   }
 
   const handleAddToGoogleWallet = async () => {
+    if (GOOGLE_WALLET_TEMP_DISABLED) {
+      setGoogleWalletError('Google Wallet is temporarily disabled due to technical issues. Please use the QR pass on this page.')
+      return
+    }
+
     if (!isPaymentApproved || !isGatePassCreated) {
       setGoogleWalletError('Gate pass not available yet')
       return
@@ -864,14 +991,27 @@ const SKFDashboard = () => {
                     <span className="pass-security-chip">STUDENT CODE QR</span>
                   </div>
 
+                  {todayGateEntry ? (
+                    <div className="today-access-granted-card">
+                      <h3>your today access was granted.</h3>
+                      <p>
+                        Entry Time: <strong>{todayGateEntry.entry_at || '-'}</strong> | Method: <strong>{todayGateEntry.entry_method || '-'}</strong> | Verified By: <strong>{todayGateEntry.entry_by || '-'}</strong>
+                      </p>
+                    </div>
+                  ) : null}
+
                   {/* Google Wallet Button */}
                   <div className="google-wallet-section">
                     <button 
                       className="google-wallet-btn"
                       onClick={handleAddToGoogleWallet}
-                      disabled={googleWalletLoading}
+                      disabled={googleWalletLoading || GOOGLE_WALLET_TEMP_DISABLED}
                     >
-                      {googleWalletLoading ? (
+                      {GOOGLE_WALLET_TEMP_DISABLED ? (
+                        <>
+                          <span>Google Wallet Temporarily Unavailable</span>
+                        </>
+                      ) : googleWalletLoading ? (
                         <>
                           <span className="wallet-loading">⏳</span>
                           <span>Adding to Wallet...</span>
@@ -888,7 +1028,11 @@ const SKFDashboard = () => {
                     {googleWalletError && (
                       <p className="google-wallet-error">{googleWalletError}</p>
                     )}
-                    <p className="google-wallet-hint">Save your gate pass to your phone for quick access</p>
+                    <p className="google-wallet-hint">
+                      {GOOGLE_WALLET_TEMP_DISABLED
+                        ? 'Google Wallet integration is temporarily disabled due to technical issues. Use this QR pass at the gate.'
+                        : 'Save your gate pass to your phone for quick access'}
+                    </p>
                   </div>
                 </div>
                 ) : (

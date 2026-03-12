@@ -307,3 +307,41 @@ function students_upsert_profile(): void
 
     json_response(['success' => true, 'message' => 'Student profile saved']);
 }
+
+function students_gate_entry_today(): void
+{
+    $studentCode = strtoupper(trim((string)($_GET['student_code'] ?? '')));
+    if ($studentCode === '') {
+        json_response(['success' => false, 'message' => 'student_code is required'], 422);
+    }
+
+    $pdo = db();
+    $today = (new DateTimeImmutable('now', new DateTimeZone('Asia/Kolkata')))->format('Y-m-d');
+
+    $stmt = $pdo->prepare('SELECT id,
+                                  student_code,
+                                  student_name,
+                                  student_department,
+                                  student_year,
+                                  entry_date,
+                                  entry_at,
+                                  entry_by,
+                                  entry_method
+                           FROM gate_entry_records
+                           WHERE UPPER(TRIM(student_code)) = :student_code
+                             AND entry_date = :entry_date
+                           ORDER BY entry_at DESC, id DESC
+                           LIMIT 1');
+    $stmt->execute([
+        ':student_code' => $studentCode,
+        ':entry_date' => $today,
+    ]);
+    $entry = $stmt->fetch();
+
+    json_response([
+        'success' => true,
+        'entry_date' => $today,
+        'granted' => $entry ? true : false,
+        'entry' => $entry ?: null,
+    ]);
+}

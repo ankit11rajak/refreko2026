@@ -164,12 +164,26 @@
 .manual-entry-form input,
 .manual-entry-form textarea,
 .search-form input,
-.records-toolbar input {
+.search-filter-row select,
+.records-toolbar input,
+.records-toolbar select {
   border-radius: 10px;
   border: 1px solid rgba(255, 255, 255, 0.24);
   background: rgba(0, 0, 0, 0.22);
   color: inherit;
   padding: 9px 10px;
+}
+
+.search-filter-row {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+}
+
+.search-filter-row label {
+  display: grid;
+  gap: 6px;
 }
 
 .gate-alert {
@@ -245,6 +259,12 @@
   gap: 10px;
   flex-wrap: wrap;
   margin-bottom: 10px;
+}
+
+.records-toolbar-filters {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
 }
 
 .records-count-chip {

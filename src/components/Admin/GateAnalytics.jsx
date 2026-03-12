@@ -10,6 +10,11 @@ const GateAnalytics = () => {
   const [entryDate, setEntryDate] = useState(todayIsoDate())
   const [search, setSearch] = useState('')
   const [records, setRecords] = useState([])
+  const [allDepartments, setAllDepartments] = useState([])
+  const [allYears, setAllYears] = useState([])
+  const [viewAllMode, setViewAllMode] = useState(false)
+  const [departmentFilter, setDepartmentFilter] = useState('all')
+  const [yearFilter, setYearFilter] = useState('all')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [message, setMessage] = useState('')
@@ -17,9 +22,60 @@ const GateAnalytics = () => {
   const [isExportingCsv, setIsExportingCsv] = useState(false)
   const [isExportingPdf, setIsExportingPdf] = useState(false)
 
+  const departmentOptions = useMemo(() => {
+    const values = Array.from(new Set(
+      [
+        ...allDepartments,
+        ...records.map((row) => String(row?.student_department || '').trim())
+      ]
+        .filter(Boolean)
+    ))
+    return values.sort((a, b) => a.localeCompare(b))
+  }, [allDepartments, records])
+
+  const yearOptions = useMemo(() => {
+    const values = Array.from(new Set(
+      [
+        ...allYears,
+        ...records.map((row) => String(row?.student_year || '').trim())
+      ]
+        .filter(Boolean)
+    ))
+    return values.sort((a, b) => a.localeCompare(b))
+  }, [allYears, records])
+
+  const filteredRecords = useMemo(() => {
+    const normalizedSearch = String(search || '').trim().toLowerCase()
+
+    return records.filter((row) => {
+      const matchesDepartment = departmentFilter === 'all'
+        || String(row?.student_department || '').trim() === departmentFilter
+
+      const matchesYear = yearFilter === 'all'
+        || String(row?.student_year || '').trim() === yearFilter
+
+      if (!normalizedSearch) {
+        return matchesDepartment && matchesYear
+      }
+
+      const bag = [
+        row?.student_code,
+        row?.student_name,
+        row?.student_department,
+        row?.student_year,
+        row?.entry_by,
+        row?.entry_method,
+        row?.entry_date,
+      ].map((value) => String(value || '').toLowerCase())
+
+      const matchesSearch = bag.some((value) => value.includes(normalizedSearch))
+      return matchesDepartment && matchesYear && matchesSearch
+    })
+  }, [records, departmentFilter, yearFilter, search])
+
   const summary = useMemo(() => {
-    const total = records.length
-    const methods = records.reduce((acc, row) => {
+    const total = filteredRecords.length
+    const methods = filteredRecords.reduce((acc, row) => {
       const key = String(row?.entry_method || 'manual').toLowerCase()
       acc[key] = (acc[key] || 0) + 1
       return acc
@@ -31,7 +87,7 @@ const GateAnalytics = () => {
       manual: methods.manual || 0,
       search: methods.search || 0
     }
-  }, [records])
+  }, [filteredRecords])
 
   const fetchRecords = async ({ all = false, q = search, date = entryDate } = {}) => {
     setLoading(true)
@@ -46,6 +102,7 @@ const GateAnalytics = () => {
         limit: 50000,
         offset: 0
       })
+      setViewAllMode(all)
       setRecords(Array.isArray(response?.records) ? response.records : [])
     } catch (fetchError) {
       setError(fetchError?.message || 'Unable to load gate records')
@@ -54,8 +111,33 @@ const GateAnalytics = () => {
     }
   }
 
+  const fetchStudentFilterCatalog = async () => {
+    try {
+      const response = await cpanelApi.listStudents({ status: 'all', limit: 50000, offset: 0 })
+      const students = Array.isArray(response?.students) ? response.students : []
+
+      const nextDepartments = Array.from(new Set(
+        students
+          .map((student) => String(student?.department || '').trim())
+          .filter(Boolean)
+      )).sort((a, b) => a.localeCompare(b))
+
+      const nextYears = Array.from(new Set(
+        students
+          .map((student) => String(student?.year || '').trim())
+          .filter(Boolean)
+      )).sort((a, b) => a.localeCompare(b))
+
+      setAllDepartments(nextDepartments)
+      setAllYears(nextYears)
+    } catch {
+      // Keep filters functional with records-only fallback if student directory lookup fails.
+    }
+  }
+
   useEffect(() => {
     fetchRecords({ all: false, q: '', date: entryDate })
+    fetchStudentFilterCatalog()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -70,7 +152,7 @@ const GateAnalytics = () => {
     try {
       await cpanelApi.adminDeleteGateEntry({ entryId })
       setMessage('Entry deleted successfully')
-      await fetchRecords({ all: false })
+      await fetchRecords({ all: viewAllMode, q: search, date: entryDate })
     } catch (deleteError) {
       setError(deleteError?.message || 'Unable to delete entry')
     } finally {
@@ -102,7 +184,33 @@ const GateAnalytics = () => {
 
     try {
       const response = await cpanelApi.adminListGateEntries({ all: true, limit: 50000, offset: 0 })
-      const rows = Array.isArray(response?.records) ? response.records : []
+      const allRows = Array.isArray(response?.records) ? response.records : []
+      const normalizedSearch = String(search || '').trim().toLowerCase()
+
+      const rows = allRows.filter((row) => {
+        const matchesDate = viewAllMode || String(row?.entry_date || '') === String(entryDate || '')
+        const matchesDepartment = departmentFilter === 'all'
+          || String(row?.student_department || '').trim() === departmentFilter
+        const matchesYear = yearFilter === 'all'
+          || String(row?.student_year || '').trim() === yearFilter
+
+        if (!normalizedSearch) {
+          return matchesDate && matchesDepartment && matchesYear
+        }
+
+        const bag = [
+          row?.student_code,
+          row?.student_name,
+          row?.student_department,
+          row?.student_year,
+          row?.entry_by,
+          row?.entry_method,
+          row?.entry_date,
+        ].map((value) => String(value || '').toLowerCase())
+
+        const matchesSearch = bag.some((value) => value.includes(normalizedSearch))
+        return matchesDate && matchesDepartment && matchesYear && matchesSearch
+      })
 
       if (rows.length === 0) {
         setError('No records available to export')
@@ -144,7 +252,33 @@ const GateAnalytics = () => {
 
     try {
       const response = await cpanelApi.adminListGateEntries({ all: true, limit: 50000, offset: 0 })
-      const rows = Array.isArray(response?.records) ? response.records : []
+      const allRows = Array.isArray(response?.records) ? response.records : []
+      const normalizedSearch = String(search || '').trim().toLowerCase()
+
+      const rows = allRows.filter((row) => {
+        const matchesDate = viewAllMode || String(row?.entry_date || '') === String(entryDate || '')
+        const matchesDepartment = departmentFilter === 'all'
+          || String(row?.student_department || '').trim() === departmentFilter
+        const matchesYear = yearFilter === 'all'
+          || String(row?.student_year || '').trim() === yearFilter
+
+        if (!normalizedSearch) {
+          return matchesDate && matchesDepartment && matchesYear
+        }
+
+        const bag = [
+          row?.student_code,
+          row?.student_name,
+          row?.student_department,
+          row?.student_year,
+          row?.entry_by,
+          row?.entry_method,
+          row?.entry_date,
+        ].map((value) => String(value || '').toLowerCase())
+
+        const matchesSearch = bag.some((value) => value.includes(normalizedSearch))
+        return matchesDate && matchesDepartment && matchesYear && matchesSearch
+      })
 
       if (rows.length === 0) {
         setError('No records available to export')
@@ -225,6 +359,24 @@ const GateAnalytics = () => {
             placeholder="Code, name, department, year, entry by"
           />
         </label>
+        <label>
+          Department
+          <select value={departmentFilter} onChange={(e) => setDepartmentFilter(e.target.value)}>
+            <option value="all">All Departments</option>
+            {departmentOptions.map((department) => (
+              <option key={department} value={department}>{department}</option>
+            ))}
+          </select>
+        </label>
+        <label>
+          Year
+          <select value={yearFilter} onChange={(e) => setYearFilter(e.target.value)}>
+            <option value="all">All Years</option>
+            {yearOptions.map((year) => (
+              <option key={year} value={year}>{year}</option>
+            ))}
+          </select>
+        </label>
         <button type="button" className="gate-analytics-btn" onClick={() => fetchRecords({ all: false })} disabled={loading}>
           {loading ? 'Loading...' : 'Apply'}
         </button>
@@ -252,11 +404,11 @@ const GateAnalytics = () => {
             </tr>
           </thead>
           <tbody>
-            {records.length === 0 ? (
+            {filteredRecords.length === 0 ? (
               <tr>
                 <td colSpan={9} className="empty-cell">No gate records found.</td>
               </tr>
-            ) : records.map((record) => (
+            ) : filteredRecords.map((record) => (
               <tr key={record.id}>
                 <td>{record.entry_date || '-'}</td>
                 <td>{record.entry_at || '-'}</td>
