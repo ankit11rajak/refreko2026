@@ -133,7 +133,7 @@ const ComingSoonPage = ({ title, subtitle, launchLine }) => {
 					>
 						<img
 							className="coming-soon-banner-image"
-							src="/event%20banner.png"
+							src="/Competition%20Poster.png"
 							alt="Events banner"
 							loading="lazy"
 							decoding="async"
@@ -157,6 +157,23 @@ const ComingSoonPage = ({ title, subtitle, launchLine }) => {
 							REGISTER NOW
 							<span className="btn-arrow">→</span>
 						</a>
+					</motion.div>
+				)}
+
+				{isEventsPage && (
+					<motion.div
+						className="events-list-poster-wrap"
+						initial={{ opacity: 0, y: 20 }}
+						animate={{ opacity: 1, y: 0 }}
+						transition={{ duration: 0.8, delay: 0.33 }}
+					>
+						<img
+							className="events-list-poster-image"
+							src="/event-list.png"
+							alt="Refresko events list poster"
+							loading="lazy"
+							decoding="async"
+						/>
 					</motion.div>
 				)}
 

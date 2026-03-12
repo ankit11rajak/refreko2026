@@ -26,7 +26,7 @@ const Events = () => {
           transition={{ duration: 0.8, delay: 0.2 }}
         >
           <img
-            src="/event%20banner.png"
+            src="/Competition%20Poster.png"
             alt="Events banner"
             className="event-banner-image"
             loading="lazy"
@@ -49,6 +49,16 @@ const Events = () => {
             REGISTER NOW
             <span className="btn-arrow">→</span>
           </a>
+
+          <div className="register-extra-image-wrapper">
+            <img
+              src="/event-list.png"
+              alt="Event registration artwork"
+              className="register-extra-image"
+              loading="lazy"
+              decoding="async"
+            />
+          </div>
         </motion.div>
       </div>
 

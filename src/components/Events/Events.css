@@ -237,6 +237,20 @@
   margin-top: 0;
 }
 
+.register-extra-image-wrapper {
+  margin: 18px auto 0;
+  width: min(100%, 520px);
+}
+
+.register-extra-image {
+  width: 100%;
+  height: auto;
+  display: block;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  box-shadow: 0 10px 34px rgba(0, 0, 0, 0.28);
+}
+
 .view-all-events {
   text-align: center;
   margin-top: 20px;
@@ -296,5 +310,10 @@
 
   .featured-event {
     padding: 30px 25px;
+  }
+
+  .register-extra-image-wrapper {
+    margin-top: 14px;
+    width: 100%;
   }
 }

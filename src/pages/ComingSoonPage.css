@@ -215,6 +215,21 @@
   margin: 2px 0 10px;
 }
 
+.events-list-poster-wrap {
+  width: 100%;
+  max-width: 1120px;
+  margin: 0 auto 10px;
+}
+
+.events-list-poster-image {
+  width: 100%;
+  height: auto;
+  display: block;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  box-shadow: 0 24px 48px rgba(0, 0, 0, 0.35);
+}
+
 .rulebook-section {
   width: 100%;
   max-width: 1120px;
