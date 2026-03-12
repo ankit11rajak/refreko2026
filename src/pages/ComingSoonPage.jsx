@@ -12,10 +12,33 @@ const ComingSoonPage = ({ title, subtitle, launchLine }) => {
 	const [isFlipping, setIsFlipping] = useState(false)
 	const [flipDirection, setFlipDirection] = useState('next')
 	const [isPdfLoaded, setIsPdfLoaded] = useState(false)
+	const [useExternalRulebook, setUseExternalRulebook] = useState(false)
 	const pdfViewerSrc = useMemo(
 		() => `${pdfPath}#toolbar=0&navpanes=0&scrollbar=0&page=${displayPage}&view=FitH`,
 		[pdfPath, displayPage]
 	)
+
+	useEffect(() => {
+		if (!isEventsPage) {
+			return undefined
+		}
+
+		const updateRulebookMode = () => {
+			const widthMatch = window.matchMedia('(max-width: 900px)').matches
+			const coarsePointer = window.matchMedia('(pointer: coarse)').matches
+			const ua = navigator.userAgent || ''
+			const mobileUa = /Android|iPhone|iPad|iPod|Mobile/i.test(ua)
+
+			setUseExternalRulebook(widthMatch || coarsePointer || mobileUa)
+		}
+
+		updateRulebookMode()
+		window.addEventListener('resize', updateRulebookMode)
+
+		return () => {
+			window.removeEventListener('resize', updateRulebookMode)
+		}
+	}, [isEventsPage])
 
 	useEffect(() => {
 		if (!isEventsPage) {
@@ -190,31 +213,48 @@ const ComingSoonPage = ({ title, subtitle, launchLine }) => {
 						</div>
 
 						<div className="rulebook-book-shell">
-							<div className="rulebook-spine" aria-hidden="true" />
-							<div className={`rulebook-page-surface ${isFlipping ? `is-flipping ${flipDirection}` : ''}`}>
-								{!isPdfLoaded && (
-									<div className="rulebook-loading-state" role="status" aria-live="polite">
-										<div className="rulebook-loading-spinner" aria-hidden="true" />
-										<p>Loading rule book...</p>
+							{useExternalRulebook ? (
+								<div className="rulebook-mobile-fallback" role="region" aria-label="Rule book mobile actions">
+									<p>Embedded preview is not supported on some mobile browsers.</p>
+									<div className="rulebook-mobile-actions">
+										<a className="rulebook-btn interactive" href={pdfPath} target="_blank" rel="noopener noreferrer">
+											Open Rule Book
+										</a>
+										<a className="rulebook-download-btn interactive" href={pdfPath} download>
+											Download Rule Book
+										</a>
 									</div>
-								)}
-								<iframe
-									title="Refresko 2026 Rule Book"
-									className="rulebook-frame"
-									src={pdfViewerSrc}
-									loading="eager"
-									onLoad={() => setIsPdfLoaded(true)}
-								/>
-								<div className="rulebook-page-shadow" aria-hidden="true" />
-							</div>
+								</div>
+							) : (
+								<>
+									<div className="rulebook-spine" aria-hidden="true" />
+									<div className={`rulebook-page-surface ${isFlipping ? `is-flipping ${flipDirection}` : ''}`}>
+										{!isPdfLoaded && (
+											<div className="rulebook-loading-state" role="status" aria-live="polite">
+												<div className="rulebook-loading-spinner" aria-hidden="true" />
+												<p>Loading rule book...</p>
+											</div>
+										)}
+										<iframe
+											title="Refresko 2026 Rule Book"
+											className="rulebook-frame"
+											src={pdfViewerSrc}
+											loading="eager"
+											onLoad={() => setIsPdfLoaded(true)}
+										/>
+										<div className="rulebook-page-shadow" aria-hidden="true" />
+									</div>
+								</>
+							)}
 						</div>
 
-						<div className="rulebook-controls">
-							
-							<a className="rulebook-download-btn interactive" href={pdfPath} download>
-								Download Rule Book
-							</a>
-						</div>
+						{!useExternalRulebook && (
+							<div className="rulebook-controls">
+								<a className="rulebook-download-btn interactive" href={pdfPath} download>
+									Download Rule Book
+								</a>
+							</div>
+						)}
 					</motion.section>
 				)}
 
