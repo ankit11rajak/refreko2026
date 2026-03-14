@@ -44,7 +44,7 @@ const Events = () => {
             href="https://forms.gle/QF4pPtpHZ2GPEUYV7"
             target="_blank"
             rel="noopener noreferrer"
-            className="btn-outline interactive"
+            className="btn-outline active"
           >
             REGISTER NOW
             <span className="btn-arrow">→</span>
@@ -68,7 +68,7 @@ const Events = () => {
         animate={isInView ? { opacity: 1 } : {}}
         transition={{ duration: 0.8, delay: 0.8 }}
       >
-        <Link to="/events" className="btn-outline interactive">
+        <Link to="/events" className="btn-outline active">
           VIEW ALL EVENTS
           <span className="btn-arrow">→</span>
         </Link>

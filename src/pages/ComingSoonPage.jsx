@@ -298,7 +298,7 @@ const ComingSoonPage = ({ title, subtitle, launchLine }) => {
 					transition={{ duration: 0.8, delay: 0.5 }}
 				>
 					{!isEventsPage && (
-						<Link className="btn-outline interactive" to="/">
+						<Link className="btn-outline active" to="/">
 							RETURN TO REFRESKO
 							<span className="btn-arrow">→</span>
 						</Link>

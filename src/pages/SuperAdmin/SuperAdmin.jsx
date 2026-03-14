@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Link, useNavigate } from 'react-router-dom'
 import { cpanelApi } from '../../lib/cpanelApi'
-import CustomCursor from '../../components/CustomCursor/CustomCursor'
 import EventManagement from '../../components/SuperAdmin/EventManagement'
 import PaymentAmountManagement from '../../components/SuperAdmin/PaymentAmountManagement'
 import PaymentManagement from '../../components/Admin/PaymentManagement'
@@ -12,6 +11,41 @@ import StudentManagement from '../../components/SuperAdmin/StudentManagement'
 import AdminLoginManagement from '../../components/SuperAdmin/AdminLoginManagement'
 import StaffAccountManagement from '../../components/SuperAdmin/StaffAccountManagement'
 import './SuperAdmin.css'
+
+const SUPER_ADMIN_TAB_META = {
+  events: {
+    title: 'Event Management',
+    description: 'Control event-level operations and activation.'
+  },
+  amounts: {
+    title: 'Payment Amounts',
+    description: 'Set and publish current payment configuration.'
+  },
+  payments: {
+    title: 'Payments and Receipts',
+    description: 'Review incoming transactions and proof uploads.'
+  },
+  analytics: {
+    title: 'Analytics',
+    description: 'Track registrations, payments, and operational metrics.'
+  },
+  'gate-analytics': {
+    title: 'Gate Analytics',
+    description: 'Monitor gate-level entries and verification trends.'
+  },
+  students: {
+    title: 'Student Accounts',
+    description: 'Search and manage student records and statuses.'
+  },
+  'admin-logins': {
+    title: 'Admin Login Control',
+    description: 'Provision and secure admin account access.'
+  },
+  'staff-accounts': {
+    title: 'Staff Account Control',
+    description: 'Manage CR and volunteer access privileges.'
+  }
+}
 
 const SuperAdmin = () => {
   const isLoginDisabled = false
@@ -23,14 +57,21 @@ const SuperAdmin = () => {
   const [loading, setLoading] = useState(false)
   const [loggedInUser, setLoggedInUser] = useState('')
   const navigate = useNavigate()
+  const activeMeta = SUPER_ADMIN_TAB_META[activeTab] || SUPER_ADMIN_TAB_META.events
 
   // Check if already authenticated on mount
   useEffect(() => {
+    document.body.classList.add('system-cursor')
+
     const savedAuth = sessionStorage.getItem('superAdminAuth')
     const savedUser = sessionStorage.getItem('superAdminUsername')
     if (savedAuth === 'true' && savedUser) {
       setIsAuthenticated(true)
       setLoggedInUser(savedUser)
+    }
+
+    return () => {
+      document.body.classList.remove('system-cursor')
     }
   }, [])
 
@@ -231,7 +272,6 @@ const SuperAdmin = () => {
 
   return (
     <div className="super-admin-dashboard">
-      <CustomCursor />
       <div className="hex-grid-overlay" />
       
       {/* Header */}
@@ -377,6 +417,15 @@ const SuperAdmin = () => {
 
       {/* Content */}
       <main className="super-admin-content">
+        <div className="super-admin-workspace-head">
+          <div>
+            <p className="workspace-kicker">Control Area</p>
+            <h2>{activeMeta.title}</h2>
+            <p>{activeMeta.description}</p>
+          </div>
+          <span className="workspace-dot">Secure Session</span>
+        </div>
+
         <AnimatePresence mode="wait">
           {activeTab === 'events' && (
             <motion.div

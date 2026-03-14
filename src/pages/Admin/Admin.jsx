@@ -1,20 +1,64 @@
 import { useEffect, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Link, useNavigate } from 'react-router-dom'
-import CustomCursor from '../../components/CustomCursor/CustomCursor'
 import PaymentManagement from '../../components/Admin/PaymentManagement'
 import Analytics from '../../components/Admin/Analytics'
 import GateAnalytics from '../../components/Admin/GateAnalytics'
 import './Admin.css'
 
+const ADMIN_TABS = [
+  {
+    id: 'payments',
+    label: 'Payment Management',
+    description: 'Review payment proofs and manage approvals.',
+    icon: (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <rect x="1" y="4" width="22" height="16" rx="2" ry="2"/>
+        <line x1="1" y1="10" x2="23" y2="10"/>
+      </svg>
+    )
+  },
+  {
+    id: 'analytics',
+    label: 'Analytics',
+    description: 'Track revenue and conversion signals.',
+    icon: (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <line x1="12" y1="20" x2="12" y2="10"/>
+        <line x1="18" y1="20" x2="18" y2="4"/>
+        <line x1="6" y1="20" x2="6" y2="16"/>
+      </svg>
+    )
+  },
+  {
+    id: 'gate-analytics',
+    label: 'Gate Analytics',
+    description: 'Monitor access validation and gate entries.',
+    icon: (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <path d="M3 8l9-5 9 5-9 5-9-5z"/>
+        <path d="M21 12l-9 5-9-5"/>
+        <path d="M21 16l-9 5-9-5"/>
+      </svg>
+    )
+  }
+]
+
 const Admin = () => {
   const [activeTab, setActiveTab] = useState('payments')
   const navigate = useNavigate()
+  const activeTabMeta = ADMIN_TABS.find((tab) => tab.id === activeTab) || ADMIN_TABS[0]
 
   useEffect(() => {
+    document.body.classList.add('system-cursor')
+
     const isAdminAuthenticated = localStorage.getItem('adminAuthenticated')
     if (isAdminAuthenticated !== 'true') {
       navigate('/login/admin')
+    }
+
+    return () => {
+      document.body.classList.remove('system-cursor')
     }
   }, [navigate])
 
@@ -26,7 +70,6 @@ const Admin = () => {
 
   return (
     <div className="admin-dashboard">
-      <CustomCursor />
       <div className="hex-grid-overlay" />
       
       {/* Header */}
@@ -44,6 +87,8 @@ const Admin = () => {
             <p>Supreme Knowledge Foundation</p>
           </div>
 
+          <div className="admin-header-badge">Operations Console</div>
+
           <button className="admin-logout-btn interactive" onClick={handleLogout}>
             <span>LOGOUT</span>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -56,51 +101,32 @@ const Admin = () => {
       {/* Navigation Tabs */}
       <nav className="admin-nav">
         <div className="admin-nav-container">
-          <motion.button
-            className={`nav-tab interactive ${activeTab === 'payments' ? 'active' : ''}`}
-            onClick={() => setActiveTab('payments')}
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-          >
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <rect x="1" y="4" width="22" height="16" rx="2" ry="2"/>
-              <line x1="1" y1="10" x2="23" y2="10"/>
-            </svg>
-            <span>PAYMENT MANAGEMENT</span>
-          </motion.button>
-
-          <motion.button
-            className={`nav-tab interactive ${activeTab === 'analytics' ? 'active' : ''}`}
-            onClick={() => setActiveTab('analytics')}
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-          >
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <line x1="12" y1="20" x2="12" y2="10"/>
-              <line x1="18" y1="20" x2="18" y2="4"/>
-              <line x1="6" y1="20" x2="6" y2="16"/>
-            </svg>
-            <span>ANALYTICS</span>
-          </motion.button>
-
-          <motion.button
-            className={`nav-tab interactive ${activeTab === 'gate-analytics' ? 'active' : ''}`}
-            onClick={() => setActiveTab('gate-analytics')}
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-          >
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M3 8l9-5 9 5-9 5-9-5z"/>
-              <path d="M21 12l-9 5-9-5"/>
-              <path d="M21 16l-9 5-9-5"/>
-            </svg>
-            <span>GATE ANALYTICS</span>
-          </motion.button>
+          {ADMIN_TABS.map((tab) => (
+            <motion.button
+              key={tab.id}
+              className={`nav-tab interactive ${activeTab === tab.id ? 'active' : ''}`}
+              onClick={() => setActiveTab(tab.id)}
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+            >
+              {tab.icon}
+              <span>{tab.label.toUpperCase()}</span>
+            </motion.button>
+          ))}
         </div>
       </nav>
 
       {/* Content */}
       <main className="admin-content">
+        <div className="admin-workspace-head">
+          <div>
+            <p className="workspace-kicker">Current Module</p>
+            <h2>{activeTabMeta.label}</h2>
+            <p>{activeTabMeta.description}</p>
+          </div>
+          <span className="workspace-dot">Live</span>
+        </div>
+
         <AnimatePresence mode="wait">
           {activeTab === 'payments' && (
             <motion.div

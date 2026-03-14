@@ -26,10 +26,12 @@
 .event-banner-wrapper {
   grid-column: 1 / -1;
   width: 100%;
+  display: flex;
+  justify-content: center;
 }
 
 .event-banner-image {
-  width: 100%;
+  width: min(100%, 1180px);
   height: auto;
   display: block;
   border-radius: 16px;
@@ -233,17 +235,33 @@
 
 /* View All Button */
 .register-now-events {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 16px;
   text-align: center;
   margin-top: 0;
 }
 
+.register-now-events .btn-outline {
+  display: inline-flex;
+  width: fit-content;
+  min-width: 260px;
+  justify-content: center;
+  margin-inline: auto;
+}
+
 .register-extra-image-wrapper {
-  margin: 18px auto 0;
-  width: min(100%, 520px);
+  margin: 0 auto;
+  width: min(100%, 720px);
+  display: flex;
+  justify-content: center;
 }
 
 .register-extra-image {
   width: 100%;
+  max-width: 100%;
   height: auto;
   display: block;
   border-radius: 14px;
@@ -313,7 +331,14 @@
   }
 
   .register-extra-image-wrapper {
-    margin-top: 14px;
+    margin-top: 0;
     width: 100%;
+  }
+
+  .register-now-events .btn-outline {
+    width: 100%;
+    max-width: 340px;
+    padding: 16px 24px;
+    margin-inline: auto;
   }
 }

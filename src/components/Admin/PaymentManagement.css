@@ -721,3 +721,180 @@
     text-align: center;
   }
 }
+
+/* Professional Admin Table Overrides */
+.payment-management {
+  background: rgba(15, 23, 42, 0.48);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 18px;
+  padding: 18px;
+}
+
+.payment-management .summary-cards {
+  background: transparent;
+  padding: 0;
+  gap: 14px;
+}
+
+.payment-management .summary-card {
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  background: linear-gradient(145deg, rgba(15, 23, 42, 0.8), rgba(2, 6, 23, 0.78));
+  box-shadow: 0 8px 18px rgba(2, 6, 23, 0.35);
+}
+
+.payment-management .summary-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(125, 211, 252, 0.5);
+  box-shadow: 0 14px 24px rgba(2, 132, 199, 0.2);
+}
+
+.payment-management .card-value {
+  color: #f8fafc;
+  font-size: 1.6rem;
+}
+
+.payment-management .payment-filters {
+  margin-bottom: 18px;
+  gap: 12px;
+  padding: 14px;
+  border-radius: 14px;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  background: rgba(15, 23, 42, 0.7);
+}
+
+.payment-management .search-box input {
+  border-radius: 10px;
+  border-color: rgba(148, 163, 184, 0.22);
+  background: rgba(2, 6, 23, 0.66);
+}
+
+.payment-management .search-box input:focus {
+  border-color: #38bdf8;
+  box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.2);
+  background: rgba(2, 6, 23, 0.9);
+}
+
+.payment-management .filter-btn {
+  border-radius: 999px;
+  border-color: rgba(148, 163, 184, 0.24);
+  background: rgba(2, 6, 23, 0.62);
+  color: #cbd5e1;
+  padding: 10px 16px;
+}
+
+.payment-management .filter-btn.active {
+  border-color: #38bdf8;
+  background: rgba(2, 132, 199, 0.2);
+  color: #e0f2fe;
+}
+
+.payment-management .filter-btn.export-csv-btn {
+  border-color: rgba(74, 222, 128, 0.55);
+  color: #bbf7d0;
+}
+
+.payment-management .filter-btn.export-csv-btn:hover:not(:disabled) {
+  background: rgba(22, 101, 52, 0.32);
+  border-color: #4ade80;
+  color: #dcfce7;
+}
+
+.payment-management .payment-table-container {
+  border-radius: 14px;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  background: rgba(2, 6, 23, 0.76);
+}
+
+.payment-management .payment-table thead {
+  background: rgba(15, 23, 42, 0.92);
+}
+
+.payment-management .payment-table th {
+  color: #93c5fd;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.2);
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+
+.payment-management .payment-table td {
+  border-bottom: 1px solid rgba(71, 85, 105, 0.28);
+}
+
+.payment-management .payment-table tbody tr:nth-child(even) {
+  background: rgba(15, 23, 42, 0.35);
+}
+
+.payment-management .payment-table tbody tr:hover {
+  background: rgba(30, 41, 59, 0.6);
+}
+
+.payment-management .status-badge {
+  border-radius: 999px;
+  font-size: 0.69rem;
+  padding: 6px 10px;
+}
+
+.payment-management .status-badge.pending {
+  background: rgba(217, 119, 6, 0.2);
+  color: #fcd34d;
+  border-color: rgba(245, 158, 11, 0.5);
+}
+
+.payment-management .status-badge.approved,
+.payment-management .status-badge.completed {
+  background: rgba(22, 163, 74, 0.2);
+  color: #86efac;
+  border-color: rgba(74, 222, 128, 0.5);
+}
+
+.payment-management .status-badge.declined {
+  background: rgba(220, 38, 38, 0.2);
+  color: #fca5a5;
+  border-color: rgba(248, 113, 113, 0.5);
+}
+
+.payment-management .action-btn {
+  border-radius: 10px;
+  border-color: rgba(148, 163, 184, 0.24);
+  background: rgba(15, 23, 42, 0.65);
+}
+
+.payment-management .action-btn:hover {
+  border-color: rgba(125, 211, 252, 0.62);
+  background: rgba(2, 132, 199, 0.2);
+}
+
+.payment-management .payments-pagination {
+  background: rgba(15, 23, 42, 0.66);
+}
+
+.payment-management .pagination-btn {
+  border-radius: 999px;
+  border-color: rgba(148, 163, 184, 0.24);
+}
+
+.payment-management .pagination-btn:hover:not(:disabled) {
+  border-color: #38bdf8;
+  color: #bae6fd;
+}
+
+@media (max-width: 768px) {
+  .payment-management {
+    padding: 12px;
+    border-radius: 14px;
+  }
+
+  .payment-management .summary-cards {
+    grid-template-columns: 1fr;
+  }
+
+  .payment-management .payment-filters {
+    padding: 12px;
+  }
+
+  .payment-management .filter-buttons {
+    width: 100%;
+    flex-wrap: wrap;
+  }
+}
