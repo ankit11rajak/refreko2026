@@ -55,12 +55,12 @@ const Gallery = () => {
       alt: 'Refresko Image 5',
       title: 'Event Highlight 5'
     },
-    // {
-    //   id: 6,
-    //   src: '/gallery/6.jpeg',
-    //   alt: 'Refresko Image 6',
-    //   title: 'Event Highlight 6'
-    // },
+    {
+      id: 6,
+      src: '/gallery/6.jpeg',
+      alt: 'Refresko Image 6',
+      title: 'Event Highlight 6'
+    },
     // {
     //   id: 7,
     //   src: '/gallery/7.jpeg',
