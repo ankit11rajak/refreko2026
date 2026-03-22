@@ -33,7 +33,7 @@ const Gallery = () => {
     },
     {
       id: 2,
-      src: '/gallery/2.jpeg',
+      src: '/gallery/2.png',
       alt: 'Refresko Image 2',
       title: 'Event Highlight 2'
     },
