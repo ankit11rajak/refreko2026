@@ -147,7 +147,6 @@ const TechTeam = () => {
                 transition={{ duration: 0.6, delay: index * 0.1 }}
                 whileHover={{ y: -10 }}
               >
-                <div className="member-role-badge">{member.role}</div>
                 <div className="member-image-wrapper">
                   <div className="member-avatar-placeholder" style={{ background: `linear-gradient(135deg, ${member.color}30, ${member.color}10)` }}>
                     {member.image ? (
@@ -168,12 +167,11 @@ const TechTeam = () => {
                       </>
                     )}
                   </div>
-                  <div className="member-overlay">
-                    <div className="member-info">
-                      <h3 className="member-name">{member.name}</h3>
-                      <p className="member-role-text">{member.department}</p>
-                    </div>
-                  </div>
+                  <div className="member-overlay" />
+                </div>
+                <div className="member-meta">
+                  <h3 className="member-name">{member.name}</h3>
+                  <p className="member-role-text">{member.department}</p>
                 </div>
               </motion.div>
             ))}
