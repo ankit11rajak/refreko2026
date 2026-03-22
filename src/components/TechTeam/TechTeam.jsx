@@ -51,14 +51,14 @@ const teamMembers = [
   //   color: '#FFC107',
   //   image: '/RajeshMondol.jpeg'
   // },
-  {
-    id: 6,
-    name: 'ANKIT PAL',
-    department: 'BCA 2nd Year',
-    initial: 'AP',
-    color: '#7A1FA2',
-    image: '/AnkitPal.jpeg'
-  },
+  // {
+  //   id: 6,
+  //   name: 'ANKIT PAL',
+  //   department: 'BCA 2nd Year',
+  //   initial: 'AP',
+  //   color: '#7A1FA2',
+  //   image: '/AnkitPal.jpeg'
+  // },
   {
     id: 7,
     name: 'DEBANJAN DEY KABIRAJ',
