@@ -1131,7 +1131,7 @@ const SKFDashboard = () => {
                   ) : null}
 
                   {/* Google Wallet Button */}
-                  <div className="google-wallet-section">
+                  {/* <div className="google-wallet-section">
                     <button 
                       className="google-wallet-btn"
                       onClick={handleAddToGoogleWallet}
@@ -1163,7 +1163,7 @@ const SKFDashboard = () => {
                         ? 'Google Wallet integration is temporarily disabled due to technical issues. Use this QR pass at the gate.'
                         : 'Save your gate pass to your phone for quick access'}
                     </p>
-                  </div>
+                  </div> */}
                 </div>
                 ) : (
                 <div className="student-card">
@@ -1355,15 +1355,17 @@ const SKFDashboard = () => {
                 <button className="modal-close" onClick={handleDeclineGatePassTerms}>×</button>
               </div>
               <div className="modal-body">
-                <p className="modal-description">
-                  Gate Pass Visibility has been enabled by Super Admin. You can continue with a temporary gate pass as an unpaid student only after accepting these terms.
-                </p>
-                <ul className="gatepass-terms-list">
-                  <li>This temporary pass does not confirm payment completion.</li>
-                  <li>Final event access may still require payment approval by admin.</li>
-                  <li>You agree to complete pending payment obligations as instructed by SKF.</li>
-                  <li>Any misuse of this pass may lead to entry cancellation.</li>
-                </ul>
+<p className="modal-description">
+  Gate Pass visibility has been enabled by the Super Admin. You may proceed with a temporary gate pass as an unpaid student only after accepting these terms, as per notice Ref. No: 249/1/SKF/NOTICE/2026.
+</p>
+<ul className="gatepass-terms-list">
+  <li>This temporary pass does not confirm payment completion.</li>
+  <li>You will get access to all events.</li>
+  <li style={{ color: "red", fontWeight: "600" }}>
+    By accepting these terms, you agree to pay the Refresko ’26 contribution along with your next semester fees.
+  </li>
+  <li>Any misuse of this pass may lead to entry cancellation.</li>
+</ul>
                 <label className="gatepass-terms-checkbox">
                   <input
                     type="checkbox"
@@ -1385,7 +1387,7 @@ const SKFDashboard = () => {
                   onClick={handleAcceptGatePassTerms}
                   disabled={!gatePassTermsChecked}
                 >
-                  Accept and Continue
+                  Accept and Pay ₹600
                 </button>
               </div>
             </motion.div>

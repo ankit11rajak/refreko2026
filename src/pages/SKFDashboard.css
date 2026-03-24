@@ -923,23 +923,30 @@
 }
 
 .gatepass-logo, .receipt-logo {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
   margin-bottom: 15px;
 }
 
 .logo-icons-row {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 10px;
-  padding: 10px 14px;
+  min-height: 52px;
+  min-width: 150px;
+  padding: 10px 16px;
   border-radius: 8px;
   border: 1px solid rgba(255, 193, 7, 0.3);
   background: rgba(255, 193, 7, 0.05);
-  margin-bottom: 12px;
 }
 
 .brand-logo-img {
-  width: 36px;
-  height: 36px;
+  width: 48px;
+  height: 48px;
   object-fit: contain;
   filter: drop-shadow(0 0 6px rgba(255, 193, 7, 0.2));
 }
@@ -953,8 +960,10 @@
 
 .logo-title-row {
   display: inline-flex;
-  align-items: baseline;
+  align-items: center;
   justify-content: center;
+  gap: 10px;
+  flex-wrap: wrap;
 }
 
 .logo-text {
@@ -962,7 +971,8 @@
   font-size: 1.8rem;
   font-weight: 700;
   color: #FFE082;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.08em;
+  line-height: 1;
   text-shadow: 0 0 20px rgba(255, 193, 7, 0.5);
 }
 
@@ -970,17 +980,20 @@
   font-family: var(--font-heading);
   font-size: 1rem;
   color: var(--color-text);
-  margin-left: 10px;
-  letter-spacing: 0.2em;
+  letter-spacing: 0.12em;
+  line-height: 1;
+  opacity: 0.9;
 }
 
 .pass-type {
+  display: block;
   font-family: var(--font-body);
   font-size: 0.85rem;
   color: #FFE082;
-  letter-spacing: 0.15em;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
   font-weight: 600;
+  text-align: center;
 }
 
 .qr-container {
@@ -1145,58 +1158,6 @@
   color: #FFE082;
   border: 1px solid rgba(255, 224, 130, 0.4);
   background: rgba(255, 193, 7, 0.12);
-}
-
-.pass-detail-row {
-  padding: 12px 0;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.03);
-}
-
-.pass-detail-row:last-child {
-  border-bottom: none;
-}
-
-.pass-label {
-  font-family: var(--font-body);
-  font-size: 0.85rem;
-  color: var(--color-text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-
-.pass-value {
-  font-family: var(--font-body);
-  font-size: 0.95rem;
-  color: var(--color-text);
-  text-align: right;
-}
-
-.pass-value.code {
-  font-family: monospace;
-  font-size: 0.8rem;
-  color: var(--color-primary);
-  background: rgba(229, 57, 53, 0.1);
-  padding: 4px 8px;
-}
-
-.pass-footer {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 20px 30px;
-  background: rgba(229, 57, 53, 0.05);
-  border-top: 1px solid rgba(229, 57, 53, 0.2);
-}
-
-.pass-status {
-  font-family: var(--font-body);
-  font-size: 0.9rem;
-  font-weight: 600;
-  letter-spacing: 0.1em;
-}
-
-.pass-status.valid {
-  color: #FFC107;
 }
 
 .download-btn {
@@ -2281,13 +2242,26 @@ body {
   .receipt-header {
     padding: 20px 15px;
   }
+
+  .logo-icons-row {
+    min-width: 128px;
+    min-height: 46px;
+    padding: 8px 12px;
+  }
+
+  .brand-logo-img {
+    width: 40px;
+    height: 40px;
+  }
   
   .logo-text {
     font-size: 1.4rem;
+    letter-spacing: 0.06em;
   }
   
   .logo-year {
     font-size: 0.85rem;
+    letter-spacing: 0.08em;
   }
   
   .pass-type {
@@ -2525,6 +2499,14 @@ body {
   margin-bottom: 18px;
 }
 
+.gatepass-terms-modal {
+  max-width: 640px;
+}
+
+.gatepass-terms-modal .modal-body {
+  background: linear-gradient(180deg, rgba(255, 193, 7, 0.06) 0%, rgba(0, 0, 0, 0) 40%);
+}
+
 .gatepass-terms-list {
   margin: 0;
   padding-left: 20px;
@@ -2560,6 +2542,14 @@ body {
 
 .gatepass-terms-checkbox span {
   color: var(--color-text-muted);
+}
+
+.gatepass-terms-modal .modal-footer {
+  border-top-color: rgba(255, 193, 7, 0.22);
+}
+
+.gatepass-terms-modal .modal-btn {
+  letter-spacing: 0.04em;
 }
 
 .food-options {
