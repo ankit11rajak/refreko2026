@@ -81,6 +81,14 @@ try {
         students_upsert_profile();
     }
 
+    if ($method === 'GET' && $path === '/students/terms-consent') {
+        students_get_terms_consent();
+    }
+
+    if ($method === 'POST' && $path === '/students/terms-consent') {
+        students_set_terms_consent();
+    }
+
     if ($method === 'GET' && $path === '/payments/list') {
         payments_list();
     }

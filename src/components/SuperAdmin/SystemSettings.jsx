@@ -15,6 +15,31 @@ const DEFAULT_SETTINGS = {
     value: true,
     type: 'boolean',
     description: 'Enable or disable automatic label generation for gate entries'
+  },
+  gate_scanner_auto_grant_enabled: {
+    value: true,
+    type: 'boolean',
+    description: 'When enabled, scanned students are auto-granted entry if valid'
+  },
+  allow_manual_student_code_entry: {
+    value: true,
+    type: 'boolean',
+    description: 'Allow volunteers to grant entry by manually entering student code'
+  },
+  gate_entry_duplicate_check_enabled: {
+    value: true,
+    type: 'boolean',
+    description: 'Prevent duplicate entry for the same student on the same day'
+  },
+  gate_pass_unpaid_terms_required_enabled: {
+    value: true,
+    type: 'boolean',
+    description: 'Require unpaid students to accept terms before they can use gate pass when visibility override is enabled'
+  },
+  max_gate_entries_export_limit: {
+    value: 50000,
+    type: 'integer',
+    description: 'Maximum records allowed in gate entry exports'
   }
 }
 
@@ -38,9 +63,15 @@ const SystemSettings = () => {
   const [settings, setSettings] = useState({})
   const [formData, setFormData] = useState({})
   const [isReadOnlyFallback, setIsReadOnlyFallback] = useState(false)
+  const [galleryImages, setGalleryImages] = useState([])
+  const [galleryLoading, setGalleryLoading] = useState(false)
+  const [galleryError, setGalleryError] = useState('')
+  const [uploadingGalleryImage, setUploadingGalleryImage] = useState(false)
+  const [deletingGalleryName, setDeletingGalleryName] = useState('')
 
   useEffect(() => {
     loadSettings()
+    loadGalleryImages()
   }, [])
 
   const loadSettings = async () => {
@@ -125,6 +156,102 @@ const SystemSettings = () => {
     }
   }
 
+  const loadGalleryImages = async () => {
+    setGalleryLoading(true)
+    setGalleryError('')
+
+    try {
+      const response = await cpanelApi.listGalleryImages()
+      if (response?.success) {
+        setGalleryImages(Array.isArray(response.files) ? response.files : [])
+      } else {
+        setGalleryError(response?.message || 'Unable to load gallery images')
+      }
+    } catch (err) {
+      setGalleryError(err?.message || 'Unable to load gallery images')
+    } finally {
+      setGalleryLoading(false)
+    }
+  }
+
+  const handleUploadGalleryImage = async (event) => {
+    const file = event.target.files?.[0]
+    event.target.value = ''
+
+    if (!file) {
+      return
+    }
+
+    setUploadingGalleryImage(true)
+    setGalleryError('')
+    try {
+      const response = await cpanelApi.uploadGalleryImage(file)
+      if (response?.success) {
+        setSuccessMessage('Gallery image uploaded successfully')
+        await loadGalleryImages()
+      } else {
+        setGalleryError(response?.message || 'Unable to upload gallery image')
+      }
+    } catch (err) {
+      setGalleryError(err?.message || 'Unable to upload gallery image')
+    } finally {
+      setUploadingGalleryImage(false)
+    }
+  }
+
+  const handleDeleteGalleryImage = async (imageName) => {
+    const confirmed = window.confirm(`Delete gallery image "${imageName}"? This cannot be undone.`)
+    if (!confirmed) {
+      return
+    }
+
+    setDeletingGalleryName(imageName)
+    setGalleryError('')
+    try {
+      const response = await cpanelApi.deleteGalleryImage(imageName)
+      if (response?.success) {
+        setSuccessMessage('Gallery image deleted successfully')
+        await loadGalleryImages()
+      } else {
+        setGalleryError(response?.message || 'Unable to delete gallery image')
+      }
+    } catch (err) {
+      setGalleryError(err?.message || 'Unable to delete gallery image')
+    } finally {
+      setDeletingGalleryName('')
+    }
+  }
+
+  const handleValueChange = (settingKey, rawValue) => {
+    setFormData((prev) => ({ ...prev, [settingKey]: rawValue }))
+  }
+
+  const handleSaveValue = async (settingKey) => {
+    const settingMeta = settings[settingKey]
+    if (!settingMeta || settingMeta.type === 'boolean') {
+      return
+    }
+
+    const nextValue = String(formData[settingKey] ?? '').trim()
+    if (nextValue === '') {
+      setError('Value cannot be empty')
+      return
+    }
+
+    try {
+      setError('')
+      setSuccessMessage('')
+      const response = await cpanelApi.updateSystemSetting(settingKey, nextValue)
+      if (response?.success) {
+        setSuccessMessage('Setting updated successfully')
+      } else {
+        setError(response?.message || 'Failed to update setting')
+      }
+    } catch (err) {
+      setError(err?.message || 'Failed to update setting')
+    }
+  }
+
   if (loading) {
     return (
       <div className="system-settings-container">
@@ -198,6 +325,24 @@ const SystemSettings = () => {
               )}
             </div>
 
+            {setting.type !== 'boolean' && (
+              <div className="setting-input-row">
+                <input
+                  type={setting.type === 'integer' ? 'number' : 'text'}
+                  value={formData[key] ?? ''}
+                  onChange={(e) => handleValueChange(key, e.target.value)}
+                  className="setting-value-input"
+                />
+                <button
+                  type="button"
+                  className="setting-save-btn"
+                  onClick={() => handleSaveValue(key)}
+                >
+                  Save
+                </button>
+              </div>
+            )}
+
             {setting.description && (
               <p className="setting-description">{setting.description}</p>
             )}
@@ -215,6 +360,79 @@ const SystemSettings = () => {
             </div>
           </motion.div>
         ))}
+      </div>
+
+      <div className="gallery-manager-card">
+        <div className="gallery-manager-header">
+          <div>
+            <h3>Gallery Images Manager</h3>
+            <p>Upload, review, and remove images shown in the public gallery.</p>
+          </div>
+          <div className="gallery-manager-actions">
+            <label className={`gallery-upload-btn ${uploadingGalleryImage ? 'is-disabled' : ''}`}>
+              {uploadingGalleryImage ? 'Uploading...' : 'Upload Image'}
+              <input
+                type="file"
+                accept="image/jpeg,image/png,image/webp,image/gif"
+                onChange={handleUploadGalleryImage}
+                disabled={uploadingGalleryImage}
+              />
+            </label>
+            <button
+              type="button"
+              className="gallery-refresh-btn"
+              onClick={loadGalleryImages}
+              disabled={galleryLoading || uploadingGalleryImage}
+            >
+              {galleryLoading ? 'Refreshing...' : 'Refresh'}
+            </button>
+          </div>
+        </div>
+
+        {galleryError ? <div className="alert alert-error">{galleryError}</div> : null}
+
+        <div className="gallery-table-wrap">
+          {galleryLoading && galleryImages.length === 0 ? (
+            <div className="gallery-empty">Loading gallery images...</div>
+          ) : galleryImages.length === 0 ? (
+            <div className="gallery-empty">No gallery images found.</div>
+          ) : (
+            <table className="gallery-table">
+              <thead>
+                <tr>
+                  <th>Preview</th>
+                  <th>Name</th>
+                  <th>Size</th>
+                  <th>Modified</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {galleryImages.map((file) => (
+                  <tr key={file.name}>
+                    <td>
+                      <img className="gallery-thumb" src={file.public_url} alt={file.name} />
+                    </td>
+                    <td>{file.name}</td>
+                    <td>{file.size_label || '-'}</td>
+                    <td>{file.modified_at ? new Date(file.modified_at).toLocaleString() : '-'}</td>
+                    <td className="gallery-actions-cell">
+                      <a className="gallery-open-link" href={file.public_url} target="_blank" rel="noreferrer">Open</a>
+                      <button
+                        type="button"
+                        className="gallery-delete-btn"
+                        onClick={() => handleDeleteGalleryImage(file.name)}
+                        disabled={deletingGalleryName === file.name}
+                      >
+                        {deletingGalleryName === file.name ? 'Deleting...' : 'Delete'}
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
       </div>
 
       {Object.keys(settings).length === 0 && !loading && (

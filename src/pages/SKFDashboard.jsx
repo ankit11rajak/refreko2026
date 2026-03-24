@@ -11,6 +11,12 @@ import './SKFDashboard.css'
 
 const GOOGLE_WALLET_TEMP_DISABLED = true
 const LOCAL_GATE_PASS_VISIBILITY_KEY = 'system_settings_gate_pass_visibility_enabled'
+const LOCAL_GATE_PASS_UNPAID_TERMS_REQUIRED_KEY = 'system_settings_gate_pass_unpaid_terms_required_enabled'
+
+const getGatePassTermsAcceptanceKey = (studentId) => {
+  const normalizedId = String(studentId || '').trim().toUpperCase()
+  return `gate_pass_terms_accepted_${normalizedId}`
+}
 
 const parseBoolish = (value) => {
   if (value === true || value === 1 || value === '1') return true
@@ -61,6 +67,10 @@ const SKFDashboard = () => {
   const [googleWalletError, setGoogleWalletError] = useState('')
   const [todayGateEntry, setTodayGateEntry] = useState(null)
   const [gatePassVisibilityEnabled, setGatePassVisibilityEnabled] = useState(false)
+  const [gatePassUnpaidTermsRequiredEnabled, setGatePassUnpaidTermsRequiredEnabled] = useState(true)
+  const [showGatePassTermsModal, setShowGatePassTermsModal] = useState(false)
+  const [hasAcceptedGatePassTerms, setHasAcceptedGatePassTerms] = useState(false)
+  const [gatePassTermsChecked, setGatePassTermsChecked] = useState(false)
   const receiptCardRef = useRef(null)
   const latestGateEntryIdRef = useRef(null)
   const hasGateEntryInitialFetchRef = useRef(false)
@@ -284,16 +294,27 @@ const SKFDashboard = () => {
         const response = await cpanelApi.getSystemSettings()
         if (response?.success && response?.settings) {
           const gatePassVisibility = response.settings.gate_pass_visibility_enabled
+          const unpaidTermsRequired = response.settings.gate_pass_unpaid_terms_required_enabled
           if (gatePassVisibility && typeof gatePassVisibility.value !== 'undefined') {
             const nextValue = parseBoolish(gatePassVisibility.value)
             setGatePassVisibilityEnabled(nextValue)
             localStorage.setItem(LOCAL_GATE_PASS_VISIBILITY_KEY, nextValue ? '1' : '0')
           }
+          if (unpaidTermsRequired && typeof unpaidTermsRequired.value !== 'undefined') {
+            const nextValue = parseBoolish(unpaidTermsRequired.value)
+            setGatePassUnpaidTermsRequiredEnabled(nextValue)
+            localStorage.setItem(LOCAL_GATE_PASS_UNPAID_TERMS_REQUIRED_KEY, nextValue ? '1' : '0')
+          }
         }
       } catch (error) {
         console.warn('Failed to load system settings:', error)
-        const fallbackValue = parseBoolish(localStorage.getItem(LOCAL_GATE_PASS_VISIBILITY_KEY))
-        setGatePassVisibilityEnabled(fallbackValue)
+        const fallbackVisibility = parseBoolish(localStorage.getItem(LOCAL_GATE_PASS_VISIBILITY_KEY))
+        const fallbackTermsRequiredRaw = localStorage.getItem(LOCAL_GATE_PASS_UNPAID_TERMS_REQUIRED_KEY)
+        const fallbackTermsRequired = fallbackTermsRequiredRaw === null
+          ? true
+          : parseBoolish(fallbackTermsRequiredRaw)
+        setGatePassVisibilityEnabled(fallbackVisibility)
+        setGatePassUnpaidTermsRequiredEnabled(fallbackTermsRequired)
       }
     }
     loadSystemSettings()
@@ -388,6 +409,12 @@ const SKFDashboard = () => {
   
   // Global override: when enabled in Super Admin, show gate pass for all students.
   const isGatePassVisible = gatePassVisibilityEnabled || (isPaymentApproved && isGatePassCreated)
+  const isUnpaidStudent = !isPaymentApproved
+  const requiresUnpaidTermsConsent =
+    gatePassVisibilityEnabled &&
+    gatePassUnpaidTermsRequiredEnabled &&
+    isUnpaidStudent
+  const isGatePassVisibleForStudent = isGatePassVisible && (!requiresUnpaidTermsConsent || hasAcceptedGatePassTerms)
   const payment = latestPayment
     ? {
         transactionId: latestPayment.transactionId || latestPayment.utrNo || 'N/A',
@@ -436,10 +463,48 @@ const SKFDashboard = () => {
   }, [student])
 
   useEffect(() => {
+    const studentCode = String(student.studentId || '').trim().toUpperCase()
+    if (!studentCode) {
+      setHasAcceptedGatePassTerms(false)
+      return
+    }
+
+    const localAccepted = localStorage.getItem(getGatePassTermsAcceptanceKey(studentCode)) === '1'
+    setHasAcceptedGatePassTerms(localAccepted)
+
+    let isMounted = true
+
+    const loadTermsConsentFromDb = async () => {
+      if (!cpanelApi.isConfigured()) {
+        return
+      }
+
+      try {
+        const response = await cpanelApi.getStudentTermsConsent(studentCode)
+        if (!isMounted || !response?.success) {
+          return
+        }
+
+        const dbAccepted = parseBoolish(response.accepted)
+        setHasAcceptedGatePassTerms(dbAccepted)
+        localStorage.setItem(getGatePassTermsAcceptanceKey(studentCode), dbAccepted ? '1' : '0')
+      } catch {
+        // Keep local fallback silently if DB call fails.
+      }
+    }
+
+    loadTermsConsentFromDb()
+
+    return () => {
+      isMounted = false
+    }
+  }, [student.studentId])
+
+  useEffect(() => {
     let isActive = true
 
     const generateGatePassQrCode = async () => {
-      if (!isGatePassVisible) {
+      if (!isGatePassVisibleForStudent) {
         setGatePassQrCodeUrl('')
         return
       }
@@ -467,7 +532,7 @@ const SKFDashboard = () => {
     return () => {
       isActive = false
     }
-  }, [gatePassPayload, isGatePassVisible])
+  }, [gatePassPayload, isGatePassVisibleForStudent])
 
   useEffect(() => {
     setAvatarLoadFailed(false)
@@ -562,7 +627,7 @@ const SKFDashboard = () => {
       return
     }
 
-    if (!isGatePassVisible) {
+    if (!isGatePassVisibleForStudent) {
       setGoogleWalletError('Gate pass not available yet')
       return
     }
@@ -620,6 +685,42 @@ const SKFDashboard = () => {
   }
 
   const generatePassCode = () => `SKF-PASS-${student.studentId}-REFRESKO2026`
+
+  const handleGenerateGatePassForUnpaid = () => {
+    setGatePassTermsChecked(false)
+    setShowGatePassTermsModal(true)
+  }
+
+  const handleAcceptGatePassTerms = async () => {
+    if (!gatePassTermsChecked) {
+      return
+    }
+
+    const studentCode = String(student.studentId || '').trim().toUpperCase()
+    if (!studentCode) {
+      return
+    }
+
+    localStorage.setItem(getGatePassTermsAcceptanceKey(studentCode), '1')
+
+    if (cpanelApi.isConfigured()) {
+      try {
+        await cpanelApi.setStudentTermsConsent({
+          studentCode,
+          accepted: true
+        })
+      } catch {
+        // Keep local acceptance even when DB write fails.
+      }
+    }
+
+    setHasAcceptedGatePassTerms(true)
+    setShowGatePassTermsModal(false)
+  }
+
+  const handleDeclineGatePassTerms = () => {
+    setShowGatePassTermsModal(false)
+  }
 
   const containerVariants = {
     hidden: { opacity: 0, x: 20 },
@@ -732,8 +833,12 @@ const SKFDashboard = () => {
                     <div className="stat-icon"><Ticket size={26} strokeWidth={2} /></div>
                     <div className="stat-content">
                       <span className="stat-label">Gate Pass</span>
-                      <span className={`stat-value ${isGatePassVisible ? 'ready' : 'unavailable'}`}>
-                        {isGatePassVisible ? '✓ Ready' : '✕ Unavailable'}
+                      <span className={`stat-value ${isGatePassVisibleForStudent ? 'ready' : requiresUnpaidTermsConsent ? 'pending' : 'unavailable'}`}>
+                        {isGatePassVisibleForStudent
+                          ? '✓ Ready'
+                          : requiresUnpaidTermsConsent
+                            ? '⚠ Terms Required'
+                            : '✕ Unavailable'}
                       </span>
                     </div>
                   </motion.div>
@@ -867,7 +972,7 @@ const SKFDashboard = () => {
                 )}
 
                 {/* Gate Pass Preview Card - Shows only if gate pass is visible */}
-                {isGatePassVisible && (
+                {isGatePassVisibleForStudent && (
                   <motion.div 
                     className="gate-pass-preview-card"
                     initial={{ opacity: 0, y: 20 }}
@@ -949,7 +1054,7 @@ const SKFDashboard = () => {
                   <p className="section-subtitle">Your digital entry pass for Refresko 2026</p>
                 </div>
 
-                {isGatePassVisible ? (
+                {isGatePassVisibleForStudent ? (
                 <div className="gatepass-card">
                   <div className="gatepass-header">
                     <div className="gatepass-logo">
@@ -1063,14 +1168,26 @@ const SKFDashboard = () => {
                 ) : (
                 <div className="student-card">
                   <div className="card-header">
-                    <h2>Gate Pass Not Available Yet</h2>
+                    <h2>{requiresUnpaidTermsConsent ? 'Terms Acceptance Required' : 'Gate Pass Not Available Yet'}</h2>
                     <span className="status-badge">Pending</span>
                   </div>
                   <p className="section-subtitle" style={{ marginBottom: '0' }}>
-                    {isPaymentDeclined
-                      ? 'Your payment was declined by admin. Please submit payment proof again.'
-                      : 'Your payment is under admin review. Gate pass will appear here after approval.'}
+                    {requiresUnpaidTermsConsent
+                      ? 'Gate pass visibility is enabled. As an unpaid student, please accept terms and conditions to continue.'
+                      : isPaymentDeclined
+                        ? 'Your payment was declined by admin. Please submit payment proof again.'
+                        : 'Your payment is under admin review. Gate pass will appear here after approval.'}
                   </p>
+                  {requiresUnpaidTermsConsent && (
+                    <button
+                      className="action-btn"
+                      type="button"
+                      style={{ marginTop: '16px', width: 'auto' }}
+                      onClick={handleGenerateGatePassForUnpaid}
+                    >
+                      Generate Gate Pass
+                    </button>
+                  )}
                 </div>
                 )}
 
@@ -1217,6 +1334,64 @@ const SKFDashboard = () => {
 
       {/* Food Preference Modal */}
       <AnimatePresence>
+        {showGatePassTermsModal && (
+          <>
+            <motion.div
+              className="modal-overlay"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={handleDeclineGatePassTerms}
+            />
+            <motion.div
+              className="food-modal gatepass-terms-modal"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.3 }}
+            >
+              <div className="modal-header">
+                <h2>Gate Pass Terms for Unpaid Students</h2>
+                <button className="modal-close" onClick={handleDeclineGatePassTerms}>×</button>
+              </div>
+              <div className="modal-body">
+                <p className="modal-description">
+                  Gate Pass Visibility has been enabled by Super Admin. You can continue with a temporary gate pass as an unpaid student only after accepting these terms.
+                </p>
+                <ul className="gatepass-terms-list">
+                  <li>This temporary pass does not confirm payment completion.</li>
+                  <li>Final event access may still require payment approval by admin.</li>
+                  <li>You agree to complete pending payment obligations as instructed by SKF.</li>
+                  <li>Any misuse of this pass may lead to entry cancellation.</li>
+                </ul>
+                <label className="gatepass-terms-checkbox">
+                  <input
+                    type="checkbox"
+                    checked={gatePassTermsChecked}
+                    onChange={(event) => setGatePassTermsChecked(event.target.checked)}
+                  />
+                  <span>I have read and accept the terms and conditions.</span>
+                </label>
+              </div>
+              <div className="modal-footer">
+                <button
+                  className="modal-btn cancel"
+                  onClick={handleDeclineGatePassTerms}
+                >
+                  Cancel
+                </button>
+                <button
+                  className="modal-btn proceed"
+                  onClick={handleAcceptGatePassTerms}
+                  disabled={!gatePassTermsChecked}
+                >
+                  Accept and Continue
+                </button>
+              </div>
+            </motion.div>
+          </>
+        )}
+
         {showFoodModal && (
           <>
             <motion.div

@@ -31,6 +31,19 @@ function normalize_payment_approved_state($value): string
     return 'pending';
 }
 
+function ensure_student_terms_columns(PDO $pdo): void
+{
+    $acceptedCol = $pdo->query("SHOW COLUMNS FROM student_details LIKE 'gate_pass_terms_accepted'")->fetch();
+    if (!$acceptedCol) {
+        $pdo->exec("ALTER TABLE student_details ADD COLUMN gate_pass_terms_accepted TINYINT(1) NOT NULL DEFAULT 0 AFTER gate_pass_created");
+    }
+
+    $acceptedAtCol = $pdo->query("SHOW COLUMNS FROM student_details LIKE 'gate_pass_terms_accepted_at'")->fetch();
+    if (!$acceptedAtCol) {
+        $pdo->exec("ALTER TABLE student_details ADD COLUMN gate_pass_terms_accepted_at DATETIME NULL AFTER gate_pass_terms_accepted");
+    }
+}
+
 function students_list(): void
 {
     $search = trim((string)($_GET['search'] ?? ''));
@@ -113,6 +126,8 @@ function students_get_one(): void
     }
 
     $pdo = db();
+    ensure_student_terms_columns($pdo);
+
     $stmt = $pdo->prepare('SELECT *
                           FROM student_details
                           WHERE UPPER(TRIM(student_code)) = :student_code
@@ -130,6 +145,7 @@ function students_get_one(): void
     $student['gate_pass_created'] = boolish_to_int($student['gate_pass_created'] ?? 0);
     $student['food_included'] = boolish_to_int($student['food_included'] ?? 0);
     $student['payment_approved'] = normalize_payment_approved_state($student['payment_approved'] ?? 'pending');
+    $student['gate_pass_terms_accepted'] = boolish_to_int($student['gate_pass_terms_accepted'] ?? 0);
 
     $latestPaymentStmt = $pdo->prepare('SELECT status,
                                                payment_approved,
@@ -168,6 +184,79 @@ function students_get_one(): void
     }
 
     json_response(['success' => true, 'student' => $student]);
+}
+
+function students_get_terms_consent(): void
+{
+    $studentCode = strtoupper(trim((string)($_GET['student_code'] ?? '')));
+    if ($studentCode === '') {
+        json_response(['success' => false, 'message' => 'student_code is required'], 422);
+    }
+
+    $pdo = db();
+    ensure_student_terms_columns($pdo);
+
+    $stmt = $pdo->prepare('SELECT student_code,
+                                  gate_pass_terms_accepted,
+                                  gate_pass_terms_accepted_at
+                           FROM student_details
+                           WHERE UPPER(TRIM(student_code)) = :student_code
+                           ORDER BY profile_completed DESC, id DESC
+                           LIMIT 1');
+    $stmt->execute([':student_code' => $studentCode]);
+    $row = $stmt->fetch();
+
+    if (!$row) {
+        json_response(['success' => false, 'message' => 'Student not found'], 404);
+    }
+
+    json_response([
+        'success' => true,
+        'student_code' => $row['student_code'],
+        'accepted' => boolish_to_int($row['gate_pass_terms_accepted'] ?? 0),
+        'accepted_at' => $row['gate_pass_terms_accepted_at'] ?? null,
+    ]);
+}
+
+function students_set_terms_consent(): void
+{
+    $payload = get_json_input();
+    require_fields($payload, ['student_code', 'accepted']);
+
+    $studentCode = strtoupper(trim((string)$payload['student_code']));
+    if ($studentCode === '') {
+        json_response(['success' => false, 'message' => 'student_code is required'], 422);
+    }
+
+    $accepted = boolish_to_int($payload['accepted']);
+
+    $pdo = db();
+    ensure_student_terms_columns($pdo);
+
+    $checkStmt = $pdo->prepare('SELECT id FROM student_details WHERE UPPER(TRIM(student_code)) = :student_code LIMIT 1');
+    $checkStmt->execute([':student_code' => $studentCode]);
+    $existing = $checkStmt->fetch();
+
+    if (!$existing) {
+        json_response(['success' => false, 'message' => 'Student not found'], 404);
+    }
+
+    $updateStmt = $pdo->prepare('UPDATE student_details
+                                 SET gate_pass_terms_accepted = :accepted,
+                                     gate_pass_terms_accepted_at = CASE WHEN :accepted_at_flag = 1 THEN NOW() ELSE NULL END
+                                 WHERE UPPER(TRIM(student_code)) = :student_code');
+    $updateStmt->execute([
+        ':accepted' => $accepted,
+        ':accepted_at_flag' => $accepted,
+        ':student_code' => $studentCode,
+    ]);
+
+    json_response([
+        'success' => true,
+        'message' => 'Terms consent updated successfully',
+        'student_code' => $studentCode,
+        'accepted' => $accepted,
+    ]);
 }
 
 function students_upsert_profile(): void

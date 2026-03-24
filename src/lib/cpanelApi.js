@@ -211,6 +211,31 @@ export const cpanelApi = {
     })
   },
 
+  getStudentTermsConsent: async (studentCode) => {
+    if (!studentCode) {
+      throw new Error('Student code is required')
+    }
+    return request('/students/terms-consent', {
+      query: { student_code: studentCode }
+    })
+  },
+
+  setStudentTermsConsent: async ({ studentCode, accepted }) => {
+    if (!studentCode) {
+      throw new Error('Student code is required')
+    }
+    return request('/students/terms-consent', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        student_code: studentCode,
+        accepted: accepted ? 1 : 0
+      })
+    })
+  },
+
   listStudents: async ({ search, status = 'all', limit = 500, offset = 0 } = {}) => {
     return request('/students/list', {
       query: { search, status, limit, offset }
@@ -560,6 +585,36 @@ export const cpanelApi = {
         setting_key: settingKey,
         setting_value: settingValue
       })
+    })
+  },
+
+  listGalleryImages: async () => {
+    return request('/system-settings', {
+      query: { action: 'gallery_list', _ts: Date.now() },
+      timeout: 60000
+    })
+  },
+
+  uploadGalleryImage: async (file) => {
+    const formData = new FormData()
+    formData.append('image', file)
+
+    return request('/system-settings', {
+      method: 'POST',
+      query: { action: 'gallery_upload' },
+      body: formData,
+      timeout: 60000
+    })
+  },
+
+  deleteGalleryImage: async (imageName) => {
+    return request('/system-settings', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      query: { action: 'gallery_delete' },
+      body: JSON.stringify({ image_name: imageName })
     })
   }
 }
