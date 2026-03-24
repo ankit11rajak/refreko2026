@@ -259,6 +259,87 @@ function students_set_terms_consent(): void
     ]);
 }
 
+function students_gate_pass_terms_report(): void
+{
+    $search = trim((string)($_GET['search'] ?? ''));
+    $limit = (int)($_GET['limit'] ?? 300);
+    $offset = (int)($_GET['offset'] ?? 0);
+
+    $limit = max(1, min(2000, $limit));
+    $offset = max(0, $offset);
+
+    $pdo = db();
+    ensure_student_terms_columns($pdo);
+
+    $where = [
+        '(
+            gate_pass_terms_accepted_at IS NOT NULL
+            OR gate_pass_terms_accepted = 1
+            OR gate_pass_terms_accepted = \'1\'
+            OR LOWER(TRIM(CAST(gate_pass_terms_accepted AS CHAR))) IN (\'true\', \'yes\', \'y\', \'on\')
+        )',
+    ];
+    $params = [];
+
+    if ($search !== '') {
+        $where[] = '(student_code LIKE :search OR name LIKE :search OR email LIKE :search OR department LIKE :search OR year LIKE :search)';
+        $params[':search'] = '%' . $search . '%';
+    }
+
+    $whereClause = ' WHERE ' . implode(' AND ', $where);
+
+    $countSql = 'SELECT COUNT(*) FROM student_details' . $whereClause;
+    $countStmt = $pdo->prepare($countSql);
+    foreach ($params as $paramKey => $paramValue) {
+        $countStmt->bindValue($paramKey, $paramValue, PDO::PARAM_STR);
+    }
+    $countStmt->execute();
+    $total = (int)($countStmt->fetchColumn() ?: 0);
+
+    $sql = 'SELECT id,
+                   student_code,
+                   name,
+                   email,
+                   department,
+                   year,
+                   payment_completion,
+                   payment_approved,
+                   gate_pass_created,
+                   gate_pass_terms_accepted,
+                   gate_pass_terms_accepted_at,
+                   updated_at
+            FROM student_details'
+            . $whereClause
+            . ' ORDER BY gate_pass_terms_accepted_at DESC, updated_at DESC, id DESC LIMIT :limit OFFSET :offset';
+
+    $stmt = $pdo->prepare($sql);
+    foreach ($params as $paramKey => $paramValue) {
+        $stmt->bindValue($paramKey, $paramValue, PDO::PARAM_STR);
+    }
+    $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
+    $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
+    $stmt->execute();
+
+    $rows = $stmt->fetchAll();
+
+    $students = array_map(static function (array $row): array {
+        $row['payment_completion'] = boolish_to_int($row['payment_completion'] ?? 0);
+        $row['payment_approved'] = normalize_payment_approved_state($row['payment_approved'] ?? 'pending');
+        $row['gate_pass_created'] = boolish_to_int($row['gate_pass_created'] ?? 0);
+        $row['gate_pass_terms_accepted'] = boolish_to_int($row['gate_pass_terms_accepted'] ?? 0);
+        return $row;
+    }, $rows);
+
+    json_response([
+        'success' => true,
+        'students' => $students,
+        'total' => $total,
+        'limit' => $limit,
+        'offset' => $offset,
+        'has_more' => ($offset + count($students)) < $total,
+    ]);
+}
+
 function students_upsert_profile(): void
 {
     $payload = get_json_input();

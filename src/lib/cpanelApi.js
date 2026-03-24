@@ -236,6 +236,13 @@ export const cpanelApi = {
     })
   },
 
+  listGatePassTermsReport: async ({ search, limit = 300, offset = 0 } = {}) => {
+    return request('/students/gate-pass-terms-report', {
+      query: { search, limit, offset },
+      timeout: 60000
+    })
+  },
+
   listStudents: async ({ search, status = 'all', limit = 500, offset = 0 } = {}) => {
     return request('/students/list', {
       query: { search, status, limit, offset }

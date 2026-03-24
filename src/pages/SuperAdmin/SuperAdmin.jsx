@@ -8,6 +8,7 @@ import SystemSettings from '../../components/SuperAdmin/SystemSettings'
 import PaymentManagement from '../../components/Admin/PaymentManagement'
 import Analytics from '../../components/Admin/Analytics'
 import GateAnalytics from '../../components/Admin/GateAnalytics'
+import GatePassTermsReport from '../../components/Admin/GatePassTermsReport'
 import StudentManagement from '../../components/SuperAdmin/StudentManagement'
 import AdminLoginManagement from '../../components/SuperAdmin/AdminLoginManagement'
 import StaffAccountManagement from '../../components/SuperAdmin/StaffAccountManagement'
@@ -33,6 +34,10 @@ const SUPER_ADMIN_TAB_META = {
   'gate-analytics': {
     title: 'Gate Analytics',
     description: 'Monitor gate-level entries and verification trends.'
+  },
+  'gate-pass-terms': {
+    title: 'Gate Pass Terms Report',
+    description: 'View students who accepted terms and generated gate pass.'
   },
   settings: {
     title: 'System Settings',
@@ -392,6 +397,19 @@ const SuperAdmin = () => {
           </motion.button>
 
           <motion.button
+            className={`nav-tab interactive ${activeTab === 'gate-pass-terms' ? 'active' : ''}`}
+            onClick={() => setActiveTab('gate-pass-terms')}
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M9 12l2 2 4-4"/>
+              <path d="M21 12c0 4.97-4.03 9-9 9S3 16.97 3 12s4.03-9 9-9"/>
+            </svg>
+            <span>GATE PASS TERMS REPORT</span>
+          </motion.button>
+
+          <motion.button
             className={`nav-tab interactive ${activeTab === 'students' ? 'active' : ''}`}
             onClick={() => setActiveTab('students')}
             whileHover={{ scale: 1.05 }}
@@ -517,6 +535,18 @@ const SuperAdmin = () => {
               transition={{ duration: 0.3 }}
             >
               <SystemSettings />
+            </motion.div>
+          )}
+
+          {activeTab === 'gate-pass-terms' && (
+            <motion.div
+              key="gate-pass-terms"
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 20 }}
+              transition={{ duration: 0.3 }}
+            >
+              <GatePassTermsReport />
             </motion.div>
           )}
 

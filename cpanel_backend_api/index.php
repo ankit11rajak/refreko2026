@@ -89,6 +89,10 @@ try {
         students_set_terms_consent();
     }
 
+    if ($method === 'GET' && $path === '/students/gate-pass-terms-report') {
+        students_gate_pass_terms_report();
+    }
+
     if ($method === 'GET' && $path === '/payments/list') {
         payments_list();
     }
