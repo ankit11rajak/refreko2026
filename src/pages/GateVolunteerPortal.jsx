@@ -3,9 +3,15 @@ import { Link, useNavigate } from 'react-router-dom'
 import { BrowserQRCodeReader } from '@zxing/browser'
 import jsQR from 'jsqr'
 import { cpanelApi } from '../lib/cpanelApi'
+import GateEntryLabel from '../components/Gate/GateEntryLabel'
 import './GateVolunteerPortal.css'
 
 const todayIsoDate = () => new Date().toISOString().slice(0, 10)
+
+const formatPaymentStatus = (value) => {
+  const normalized = String(value || '').trim().toLowerCase()
+  return normalized === 'paid' ? 'PAID' : 'NOT PAID'
+}
 
 const GateVolunteerPortal = () => {
   const navigate = useNavigate()
@@ -50,6 +56,8 @@ const GateVolunteerPortal = () => {
   const [isExportingExcel, setIsExportingExcel] = useState(false)
   const [recordDepartmentFilter, setRecordDepartmentFilter] = useState('all')
   const [recordYearFilter, setRecordYearFilter] = useState('all')
+  const [showEntryLabel, setShowEntryLabel] = useState(false)
+  const [lastEntry, setLastEntry] = useState(null)
 
   const searchDepartmentOptions = useMemo(() => {
     const values = Array.from(new Set(
@@ -200,8 +208,8 @@ const GateVolunteerPortal = () => {
 
       if (response?.entered_today) {
         setEntryError('Student already entered today')
-      } else if (student?.eligible) {
-        setEntryMessage('Student record found in DB and eligible for entry.')
+      } else if (student?.student_code) {
+        setEntryMessage('Student record found in DB. Ready to grant entry.')
         if (autoGrant && !isSubmittingEntry) {
           await grantEntry({
             studentCode: String(student.student_code || studentCode || '').toUpperCase(),
@@ -211,7 +219,7 @@ const GateVolunteerPortal = () => {
           return
         }
       } else {
-        setEntryError(student?.ineligible_reason || 'Student is not eligible for entry')
+        setEntryError('Student record is invalid for entry')
       }
     } catch (error) {
       setResolvedStudent(null)
@@ -492,6 +500,13 @@ const GateVolunteerPortal = () => {
       })
 
       setEntryMessage(response?.message || 'Entry granted')
+      
+      // Store entry and show label
+      if (response?.entry) {
+        setLastEntry(response.entry)
+        setShowEntryLabel(true)
+      }
+      
       setManualStudentCode('')
       setQrInput('')
       setSearchText('')
@@ -746,7 +761,7 @@ const GateVolunteerPortal = () => {
         {activeTab === 'scan' ? (
         <section className="gate-card">
           <h2>Scan Or Enter QR</h2>
-          <p>Entry is granted only for students with paid and approved contribution. One QR is valid once per day.</p>
+          <p>Entry is granted for any valid student code. One entry is allowed per student per day.</p>
 
           <div className="scan-tools">
             <p className="scan-tools-title">Scan Selection</p>
@@ -812,7 +827,7 @@ const GateVolunteerPortal = () => {
               <div>
                 <strong>{resolvedStudent.name}</strong>
                 <p>{resolvedStudent.student_code} · {resolvedStudent.department || '-'} · {resolvedStudent.year || '-'}</p>
-                {resolvedStudent.eligible ? <p>Eligible: Yes</p> : <p className="danger-text">{resolvedStudent.ineligible_reason || 'Not eligible'}</p>}
+                <p>Payment Status: {formatPaymentStatus(resolvedStudent.payment_status)}</p>
                 {resolvedStudent.entered_today ? <p className="warn-text">Already entered today</p> : null}
               </div>
             </div>
@@ -874,13 +889,13 @@ const GateVolunteerPortal = () => {
                 <div>
                   <strong>{student.name}</strong>
                   <p>{student.student_code} · {student.department || '-'} · {student.year || '-'}</p>
-                  {!student.eligible ? <p className="danger-text">{student.ineligible_reason || 'Not eligible'}</p> : null}
+                  <p>Payment Status: {formatPaymentStatus(student.payment_status)}</p>
                   {student.entered_today ? <p className="warn-text">Already entered today</p> : null}
                 </div>
                 <button
                   type="button"
                   className="gate-btn"
-                  disabled={!student.eligible || student.entered_today || isSubmittingEntry}
+                  disabled={student.entered_today || isSubmittingEntry}
                   onClick={() => grantEntry({ studentCode: student.student_code, qrData: '', method: 'search' })}
                 >
                   Grant Entry
@@ -985,6 +1000,19 @@ const GateVolunteerPortal = () => {
         </section>
         ) : null}
       </div>
+
+      {showEntryLabel && (
+        <GateEntryLabel
+          entry={lastEntry}
+          onPrint={() => {
+            // Entry label was printed
+          }}
+          onClose={() => {
+            setShowEntryLabel(false)
+            setLastEntry(null)
+          }}
+        />
+      )}
     </div>
   )
 }

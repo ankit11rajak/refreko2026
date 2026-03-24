@@ -70,6 +70,7 @@ function ensure_staff_schema(PDO $pdo): void
         entry_at DATETIME NOT NULL,
         entry_by VARCHAR(120) NOT NULL,
         entry_method ENUM('qr','manual','search') NOT NULL DEFAULT 'manual',
+        payment_status ENUM('paid','not_paid') NULL DEFAULT NULL,
         created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
         UNIQUE KEY uq_gate_entry_daily (student_code, entry_date),
         INDEX idx_gate_entry_date (entry_date),
@@ -94,6 +95,11 @@ function ensure_staff_schema(PDO $pdo): void
         $studentYearColumn = $pdo->query("SHOW COLUMNS FROM gate_entry_records LIKE 'student_year'")->fetch();
         if (!$studentYearColumn) {
             $pdo->exec("ALTER TABLE gate_entry_records ADD COLUMN student_year VARCHAR(30) NULL AFTER student_department");
+        }
+
+        $paymentStatusColumn = $pdo->query("SHOW COLUMNS FROM gate_entry_records LIKE 'payment_status'")->fetch();
+        if (!$paymentStatusColumn) {
+            $pdo->exec("ALTER TABLE gate_entry_records ADD COLUMN payment_status ENUM('paid','not_paid') NULL DEFAULT NULL AFTER entry_method");
         }
     } catch (Throwable $error) {
         error_log('staff schema migration warning (gate entry extra columns): ' . $error->getMessage());
@@ -234,6 +240,55 @@ function get_gate_eligible_student(PDO $pdo, string $studentCode): ?array
     ];
 }
 
+/**
+ * Get student details for gate entry without eligibility checks
+ * Returns student info and payment status regardless of approval status
+ */
+function get_gate_student(PDO $pdo, string $studentCode): ?array
+{
+    $studentsTable = staff_student_table_name($pdo);
+
+    $sql = sprintf('SELECT student_code,
+                                  name,
+                                  department,
+                                  year,
+                                  payment_completion,
+                                  payment_approved,
+                                  gate_pass_created
+                           FROM %s
+                           WHERE UPPER(TRIM(student_code)) = :student_code
+                           ORDER BY id DESC
+                           LIMIT 1', $studentsTable);
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute([':student_code' => strtoupper(trim($studentCode))]);
+    $row = $stmt->fetch();
+
+    if (!$row) {
+        return null;
+    }
+
+    $paymentCompletion = (int)($row['payment_completion'] ?? 0) === 1;
+    $paymentApproved = strtolower(trim((string)($row['payment_approved'] ?? 'pending'))) === 'approved';
+    $paymentState = get_student_payment_state($pdo, $studentCode);
+    $paymentSubmitted = $paymentCompletion || $paymentApproved || (bool)($paymentState['submitted'] ?? false);
+    $paymentApprovedFinal = $paymentApproved || (bool)($paymentState['approved'] ?? false);
+    $gatePassCreated = (int)($row['gate_pass_created'] ?? 0) === 1;
+
+    // Determine payment status for record
+    $isPaid = $paymentApprovedFinal ? 'paid' : 'not_paid';
+
+    return [
+        'student_code' => strtoupper(trim((string)($row['student_code'] ?? ''))),
+        'name' => trim((string)($row['name'] ?? '')),
+        'department' => trim((string)($row['department'] ?? '')),
+        'year' => trim((string)($row['year'] ?? '')),
+        'payment_completion' => $paymentSubmitted,
+        'payment_approved' => $paymentApprovedFinal,
+        'gate_pass_created' => $gatePassCreated,
+        'payment_status' => $isPaid,
+    ];
+}
+
 function has_gate_entry_for_date(PDO $pdo, string $studentCode, string $entryDate): ?array
 {
         $stmt = $pdo->prepare('SELECT student_code,
@@ -243,7 +298,8 @@ function has_gate_entry_for_date(PDO $pdo, string $studentCode, string $entryDat
                                                                     entry_date,
                                                                     entry_at,
                                                                     entry_by,
-                                                                    entry_method
+                                                                                                                                        entry_method,
+                                                                                                                                        payment_status
                            FROM gate_entry_records
                            WHERE student_code = :student_code
                              AND entry_date = :entry_date
@@ -402,13 +458,8 @@ function staff_gate_volunteer_search(): void
         $paymentApprovedFinal = $paymentApproved || (bool)($paymentState['approved'] ?? false);
         $gatePassCreated = (int)($row['gate_pass_created'] ?? 0) === 1;
 
-        $isEligible = $paymentSubmitted && $paymentApprovedFinal;
+        $isEligible = true;
         $reason = '';
-        if (!$paymentSubmitted) {
-            $reason = 'Contribution payment is not submitted';
-        } elseif (!$paymentApprovedFinal) {
-            $reason = 'Contribution payment is not approved';
-        }
 
         $todayEntry = $todayEntryMap[$studentCode] ?? null;
 
@@ -419,6 +470,7 @@ function staff_gate_volunteer_search(): void
             'year' => trim((string)($row['year'] ?? '')),
             'eligible' => $isEligible,
             'ineligible_reason' => $reason,
+            'payment_status' => $paymentApprovedFinal ? 'paid' : 'not_paid',
             'entered_today' => $todayEntry !== null,
             'today_entry' => $todayEntry,
         ];
@@ -463,7 +515,8 @@ function staff_gate_volunteer_entries(): void
                                       entry_date,
                                       entry_at,
                                       entry_by,
-                                      entry_method
+                                      entry_method,
+                                      payment_status
                                FROM gate_entry_records
                                ORDER BY entry_date DESC, entry_at DESC
                                LIMIT :limit');
@@ -476,7 +529,8 @@ function staff_gate_volunteer_entries(): void
                                       entry_date,
                                       entry_at,
                                       entry_by,
-                                      entry_method
+                                      entry_method,
+                                      payment_status
                                FROM gate_entry_records
                                WHERE entry_date = :entry_date
                                ORDER BY entry_at DESC
@@ -513,18 +567,13 @@ function staff_gate_volunteer_mark_entry(): void
         $entryMethod = 'manual';
     }
 
-    $student = get_gate_eligible_student($pdo, $studentCode);
+    $student = get_gate_student($pdo, $studentCode);
     if (!$student) {
         json_response(['success' => false, 'message' => 'Student not found'], 404);
+        return;
     }
 
-    if (!(bool)$student['eligible']) {
-        json_response([
-            'success' => false,
-            'message' => (string)$student['ineligible_reason'],
-            'student' => $student,
-        ], 403);
-    }
+    // Entry is now allowed regardless of payment status - just verify student exists
 
     $entryDate = gate_entry_today_utc();
     $existing = has_gate_entry_for_date($pdo, $studentCode, $entryDate);
@@ -546,7 +595,8 @@ function staff_gate_volunteer_mark_entry(): void
                                 entry_date,
                                 entry_at,
                                 entry_by,
-                                entry_method
+                                entry_method,
+                                payment_status
                              ) VALUES (
                                 :student_code,
                                 :student_name,
@@ -555,7 +605,8 @@ function staff_gate_volunteer_mark_entry(): void
                                 :entry_date,
                                 :entry_at,
                                 :entry_by,
-                                :entry_method
+                                :entry_method,
+                                :payment_status
                              )');
 
     try {
@@ -568,6 +619,7 @@ function staff_gate_volunteer_mark_entry(): void
             ':entry_at' => $entryAt,
             ':entry_by' => (string)($staff['username'] ?? 'volunteer'),
             ':entry_method' => $entryMethod,
+            ':payment_status' => (string)($student['payment_status'] ?? 'not_paid'),
         ]);
     } catch (Throwable $error) {
         if ((string)$error->getCode() === '23000') {
@@ -598,6 +650,7 @@ function staff_gate_volunteer_mark_entry(): void
             'entry_at' => $entryAt,
             'entry_by' => (string)($staff['username'] ?? 'volunteer'),
             'entry_method' => $entryMethod,
+            'payment_status' => (string)($student['payment_status'] ?? 'not_paid'),
         ],
     ]);
 }
@@ -614,7 +667,7 @@ function staff_gate_volunteer_resolve_student(): void
         json_response(['success' => false, 'message' => 'student_code or qr_data is required'], 422);
     }
 
-    $student = get_gate_eligible_student($pdo, $studentCode);
+    $student = get_gate_student($pdo, $studentCode);
     if (!$student) {
         json_response(['success' => false, 'message' => 'Student not found'], 404);
     }
@@ -630,10 +683,9 @@ function staff_gate_volunteer_resolve_student(): void
             'name' => (string)$student['name'],
             'department' => (string)$student['department'],
             'year' => (string)$student['year'],
-            'eligible' => (bool)$student['eligible'],
-            'ineligible_reason' => (string)$student['ineligible_reason'],
             'payment_completion' => (bool)$student['payment_completion'],
             'payment_approved' => (bool)$student['payment_approved'],
+            'payment_status' => (string)$student['payment_status'],
             'gate_pass_created' => (bool)$student['gate_pass_created'],
         ],
         'entered_today' => $existing !== null,

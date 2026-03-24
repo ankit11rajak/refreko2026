@@ -6,6 +6,13 @@ import './GateAnalytics.css'
 
 const todayIsoDate = () => new Date().toISOString().slice(0, 10)
 
+const normalizePaymentStatus = (value) => {
+  const normalized = String(value || '').trim().toLowerCase()
+  return normalized === 'paid' ? 'paid' : 'not_paid'
+}
+
+const formatPaymentStatus = (value) => normalizePaymentStatus(value) === 'paid' ? 'PAID' : 'NOT PAID'
+
 const GateAnalytics = () => {
   const [entryDate, setEntryDate] = useState(todayIsoDate())
   const [search, setSearch] = useState('')
@@ -15,6 +22,7 @@ const GateAnalytics = () => {
   const [viewAllMode, setViewAllMode] = useState(false)
   const [departmentFilter, setDepartmentFilter] = useState('all')
   const [yearFilter, setYearFilter] = useState('all')
+  const [paymentStatusFilter, setPaymentStatusFilter] = useState('all')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [message, setMessage] = useState('')
@@ -54,8 +62,11 @@ const GateAnalytics = () => {
       const matchesYear = yearFilter === 'all'
         || String(row?.student_year || '').trim() === yearFilter
 
+      const matchesPaymentStatus = paymentStatusFilter === 'all'
+        || normalizePaymentStatus(row?.payment_status) === paymentStatusFilter
+
       if (!normalizedSearch) {
-        return matchesDepartment && matchesYear
+        return matchesDepartment && matchesYear && matchesPaymentStatus
       }
 
       const bag = [
@@ -66,12 +77,13 @@ const GateAnalytics = () => {
         row?.entry_by,
         row?.entry_method,
         row?.entry_date,
+        formatPaymentStatus(row?.payment_status),
       ].map((value) => String(value || '').toLowerCase())
 
       const matchesSearch = bag.some((value) => value.includes(normalizedSearch))
-      return matchesDepartment && matchesYear && matchesSearch
+      return matchesDepartment && matchesYear && matchesPaymentStatus && matchesSearch
     })
-  }, [records, departmentFilter, yearFilter, search])
+  }, [records, departmentFilter, yearFilter, paymentStatusFilter, search])
 
   const summary = useMemo(() => {
     const total = filteredRecords.length
@@ -89,7 +101,7 @@ const GateAnalytics = () => {
     }
   }, [filteredRecords])
 
-  const fetchRecords = async ({ all = false, q = search, date = entryDate } = {}) => {
+  const fetchRecords = async ({ all = false, q = search, date = entryDate, paymentStatus = paymentStatusFilter } = {}) => {
     setLoading(true)
     setError('')
     setMessage('')
@@ -99,6 +111,7 @@ const GateAnalytics = () => {
         all,
         entryDate: all ? undefined : date,
         search: q,
+        paymentStatus: paymentStatus === 'all' ? undefined : paymentStatus,
         limit: 50000,
         offset: 0
       })
@@ -183,7 +196,12 @@ const GateAnalytics = () => {
     setMessage('')
 
     try {
-      const response = await cpanelApi.adminListGateEntries({ all: true, limit: 50000, offset: 0 })
+      const response = await cpanelApi.adminListGateEntries({
+        all: true,
+        paymentStatus: paymentStatusFilter === 'all' ? undefined : paymentStatusFilter,
+        limit: 50000,
+        offset: 0
+      })
       const allRows = Array.isArray(response?.records) ? response.records : []
       const normalizedSearch = String(search || '').trim().toLowerCase()
 
@@ -193,9 +211,11 @@ const GateAnalytics = () => {
           || String(row?.student_department || '').trim() === departmentFilter
         const matchesYear = yearFilter === 'all'
           || String(row?.student_year || '').trim() === yearFilter
+        const matchesPaymentStatus = paymentStatusFilter === 'all'
+          || normalizePaymentStatus(row?.payment_status) === paymentStatusFilter
 
         if (!normalizedSearch) {
-          return matchesDate && matchesDepartment && matchesYear
+          return matchesDate && matchesDepartment && matchesYear && matchesPaymentStatus
         }
 
         const bag = [
@@ -206,10 +226,11 @@ const GateAnalytics = () => {
           row?.entry_by,
           row?.entry_method,
           row?.entry_date,
+          formatPaymentStatus(row?.payment_status),
         ].map((value) => String(value || '').toLowerCase())
 
         const matchesSearch = bag.some((value) => value.includes(normalizedSearch))
-        return matchesDate && matchesDepartment && matchesYear && matchesSearch
+        return matchesDate && matchesDepartment && matchesYear && matchesPaymentStatus && matchesSearch
       })
 
       if (rows.length === 0) {
@@ -217,7 +238,7 @@ const GateAnalytics = () => {
         return
       }
 
-      const headers = ['ID', 'Date', 'Time', 'Student Name', 'Student Code', 'Department', 'Year', 'Method', 'Entry By']
+      const headers = ['ID', 'Date', 'Time', 'Student Name', 'Student Code', 'Department', 'Year', 'Payment Status', 'Method', 'Entry By']
       const lines = rows.map((row) => ([
         row.id,
         row.entry_date,
@@ -226,6 +247,7 @@ const GateAnalytics = () => {
         row.student_code,
         row.student_department || '-',
         row.student_year || '-',
+        formatPaymentStatus(row.payment_status),
         row.entry_method,
         row.entry_by
       ].map(csvEscape).join(',')))
@@ -251,7 +273,12 @@ const GateAnalytics = () => {
     setMessage('')
 
     try {
-      const response = await cpanelApi.adminListGateEntries({ all: true, limit: 50000, offset: 0 })
+      const response = await cpanelApi.adminListGateEntries({
+        all: true,
+        paymentStatus: paymentStatusFilter === 'all' ? undefined : paymentStatusFilter,
+        limit: 50000,
+        offset: 0
+      })
       const allRows = Array.isArray(response?.records) ? response.records : []
       const normalizedSearch = String(search || '').trim().toLowerCase()
 
@@ -261,9 +288,11 @@ const GateAnalytics = () => {
           || String(row?.student_department || '').trim() === departmentFilter
         const matchesYear = yearFilter === 'all'
           || String(row?.student_year || '').trim() === yearFilter
+        const matchesPaymentStatus = paymentStatusFilter === 'all'
+          || normalizePaymentStatus(row?.payment_status) === paymentStatusFilter
 
         if (!normalizedSearch) {
-          return matchesDate && matchesDepartment && matchesYear
+          return matchesDate && matchesDepartment && matchesYear && matchesPaymentStatus
         }
 
         const bag = [
@@ -274,10 +303,11 @@ const GateAnalytics = () => {
           row?.entry_by,
           row?.entry_method,
           row?.entry_date,
+          formatPaymentStatus(row?.payment_status),
         ].map((value) => String(value || '').toLowerCase())
 
         const matchesSearch = bag.some((value) => value.includes(normalizedSearch))
-        return matchesDate && matchesDepartment && matchesYear && matchesSearch
+        return matchesDate && matchesDepartment && matchesYear && matchesPaymentStatus && matchesSearch
       })
 
       if (rows.length === 0) {
@@ -291,7 +321,7 @@ const GateAnalytics = () => {
 
       doc.autoTable({
         startY: 50,
-        head: [['ID', 'Date', 'Time', 'Student', 'Code', 'Department', 'Year', 'Method', 'By']],
+        head: [['ID', 'Date', 'Time', 'Student', 'Code', 'Department', 'Year', 'Payment', 'Method', 'By']],
         body: rows.map((row) => [
           row.id,
           row.entry_date || '',
@@ -300,6 +330,7 @@ const GateAnalytics = () => {
           row.student_code || '',
           row.student_department || '-',
           row.student_year || '-',
+          formatPaymentStatus(row.payment_status),
           row.entry_method || '',
           row.entry_by || ''
         ]),
@@ -369,6 +400,14 @@ const GateAnalytics = () => {
           </select>
         </label>
         <label>
+          Payment Status
+          <select value={paymentStatusFilter} onChange={(e) => setPaymentStatusFilter(e.target.value)}>
+            <option value="all">All Status</option>
+            <option value="paid">Paid</option>
+            <option value="not_paid">Not Paid</option>
+          </select>
+        </label>
+        <label>
           Year
           <select value={yearFilter} onChange={(e) => setYearFilter(e.target.value)}>
             <option value="all">All Years</option>
@@ -398,6 +437,7 @@ const GateAnalytics = () => {
               <th>Code</th>
               <th>Department</th>
               <th>Year</th>
+              <th>Payment Status</th>
               <th>Method</th>
               <th>By</th>
               <th>Action</th>
@@ -406,7 +446,7 @@ const GateAnalytics = () => {
           <tbody>
             {filteredRecords.length === 0 ? (
               <tr>
-                <td colSpan={9} className="empty-cell">No gate records found.</td>
+                <td colSpan={10} className="empty-cell">No gate records found.</td>
               </tr>
             ) : filteredRecords.map((record) => (
               <tr key={record.id}>
@@ -416,6 +456,11 @@ const GateAnalytics = () => {
                 <td>{record.student_code || '-'}</td>
                 <td>{record.student_department || '-'}</td>
                 <td>{record.student_year || '-'}</td>
+                <td>
+                  <span className={`payment-status-badge ${normalizePaymentStatus(record.payment_status) === 'paid' ? 'paid' : 'not-paid'}`}>
+                    {formatPaymentStatus(record.payment_status)}
+                  </span>
+                </td>
                 <td>{record.entry_method || '-'}</td>
                 <td>{record.entry_by || '-'}</td>
                 <td>

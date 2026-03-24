@@ -8,6 +8,7 @@ require_once __DIR__ . '/config/database.php';
 
 require_once __DIR__ . '/routes/health.php';
 require_once __DIR__ . '/routes/config.php';
+require_once __DIR__ . '/routes/system_settings.php';
 require_once __DIR__ . '/routes/students.php';
 require_once __DIR__ . '/routes/payments.php';
 require_once __DIR__ . '/routes/admin.php';
@@ -54,6 +55,14 @@ try {
 
     if ($method === 'POST' && $path === '/config/active') {
         config_set_active();
+    }
+
+    if ($method === 'GET' && strpos($path, '/system-settings') === 0) {
+        route_system_settings();
+    }
+
+    if ($method === 'POST' && strpos($path, '/system-settings') === 0) {
+        route_system_settings();
     }
 
     if ($method === 'GET' && $path === '/students/get') {

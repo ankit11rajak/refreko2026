@@ -10,6 +10,7 @@ import { loadPaymentConfigWithApi } from '../lib/paymentConfigApi'
 import './SKFDashboard.css'
 
 const GOOGLE_WALLET_TEMP_DISABLED = true
+const LOCAL_GATE_PASS_VISIBILITY_KEY = 'system_settings_gate_pass_visibility_enabled'
 
 const parseBoolish = (value) => {
   if (value === true || value === 1 || value === '1') return true
@@ -59,6 +60,7 @@ const SKFDashboard = () => {
   const [googleWalletLoading, setGoogleWalletLoading] = useState(false)
   const [googleWalletError, setGoogleWalletError] = useState('')
   const [todayGateEntry, setTodayGateEntry] = useState(null)
+  const [gatePassVisibilityEnabled, setGatePassVisibilityEnabled] = useState(false)
   const receiptCardRef = useRef(null)
   const latestGateEntryIdRef = useRef(null)
   const hasGateEntryInitialFetchRef = useRef(false)
@@ -276,6 +278,26 @@ const SKFDashboard = () => {
     }
     loadConfig()
     
+    // Load system settings (gate pass visibility)
+    const loadSystemSettings = async () => {
+      try {
+        const response = await cpanelApi.getSystemSettings()
+        if (response?.success && response?.settings) {
+          const gatePassVisibility = response.settings.gate_pass_visibility_enabled
+          if (gatePassVisibility && typeof gatePassVisibility.value !== 'undefined') {
+            const nextValue = parseBoolish(gatePassVisibility.value)
+            setGatePassVisibilityEnabled(nextValue)
+            localStorage.setItem(LOCAL_GATE_PASS_VISIBILITY_KEY, nextValue ? '1' : '0')
+          }
+        }
+      } catch (error) {
+        console.warn('Failed to load system settings:', error)
+        const fallbackValue = parseBoolish(localStorage.getItem(LOCAL_GATE_PASS_VISIBILITY_KEY))
+        setGatePassVisibilityEnabled(fallbackValue)
+      }
+    }
+    loadSystemSettings()
+    
     // Check authentication
     const isAuthenticated = localStorage.getItem('isAuthenticated')
     const profileCompleted = localStorage.getItem('profileCompleted')
@@ -363,6 +385,9 @@ const SKFDashboard = () => {
   const isPaymentCompleted =
     parseBoolish(latestPayment?.payment_completion)
   const isGatePassCreated = parseBoolish(latestPayment?.gate_pass_created)
+  
+  // Global override: when enabled in Super Admin, show gate pass for all students.
+  const isGatePassVisible = gatePassVisibilityEnabled || (isPaymentApproved && isGatePassCreated)
   const payment = latestPayment
     ? {
         transactionId: latestPayment.transactionId || latestPayment.utrNo || 'N/A',
@@ -414,7 +439,7 @@ const SKFDashboard = () => {
     let isActive = true
 
     const generateGatePassQrCode = async () => {
-      if (!isPaymentApproved || !isGatePassCreated) {
+      if (!isGatePassVisible) {
         setGatePassQrCodeUrl('')
         return
       }
@@ -442,7 +467,7 @@ const SKFDashboard = () => {
     return () => {
       isActive = false
     }
-  }, [gatePassPayload, isPaymentApproved, isGatePassCreated])
+  }, [gatePassPayload, isGatePassVisible])
 
   useEffect(() => {
     setAvatarLoadFailed(false)
@@ -537,7 +562,7 @@ const SKFDashboard = () => {
       return
     }
 
-    if (!isPaymentApproved || !isGatePassCreated) {
+    if (!isGatePassVisible) {
       setGoogleWalletError('Gate pass not available yet')
       return
     }
@@ -707,8 +732,8 @@ const SKFDashboard = () => {
                     <div className="stat-icon"><Ticket size={26} strokeWidth={2} /></div>
                     <div className="stat-content">
                       <span className="stat-label">Gate Pass</span>
-                      <span className={`stat-value ${isPaymentApproved ? 'ready' : 'unavailable'}`}>
-                        {isPaymentApproved ? '✓ Ready' : '✕ Unavailable'}
+                      <span className={`stat-value ${isGatePassVisible ? 'ready' : 'unavailable'}`}>
+                        {isGatePassVisible ? '✓ Ready' : '✕ Unavailable'}
                       </span>
                     </div>
                   </motion.div>
@@ -841,8 +866,8 @@ const SKFDashboard = () => {
                   </div>
                 )}
 
-                {/* Gate Pass Preview Card - Shows only if payment is approved */}
-                {isPaymentApproved && (
+                {/* Gate Pass Preview Card - Shows only if gate pass is visible */}
+                {isGatePassVisible && (
                   <motion.div 
                     className="gate-pass-preview-card"
                     initial={{ opacity: 0, y: 20 }}
@@ -924,7 +949,7 @@ const SKFDashboard = () => {
                   <p className="section-subtitle">Your digital entry pass for Refresko 2026</p>
                 </div>
 
-                {isPaymentApproved ? (
+                {isGatePassVisible ? (
                 <div className="gatepass-card">
                   <div className="gatepass-header">
                     <div className="gatepass-logo">

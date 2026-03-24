@@ -4,6 +4,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { cpanelApi } from '../../lib/cpanelApi'
 import EventManagement from '../../components/SuperAdmin/EventManagement'
 import PaymentAmountManagement from '../../components/SuperAdmin/PaymentAmountManagement'
+import SystemSettings from '../../components/SuperAdmin/SystemSettings'
 import PaymentManagement from '../../components/Admin/PaymentManagement'
 import Analytics from '../../components/Admin/Analytics'
 import GateAnalytics from '../../components/Admin/GateAnalytics'
@@ -32,6 +33,10 @@ const SUPER_ADMIN_TAB_META = {
   'gate-analytics': {
     title: 'Gate Analytics',
     description: 'Monitor gate-level entries and verification trends.'
+  },
+  settings: {
+    title: 'System Settings',
+    description: 'Configure global system behavior and features.'
   },
   students: {
     title: 'Student Accounts',
@@ -371,6 +376,22 @@ const SuperAdmin = () => {
           </motion.button>
 
           <motion.button
+            className={`nav-tab interactive ${activeTab === 'settings' ? 'active' : ''}`}
+            onClick={() => setActiveTab('settings')}
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <circle cx="12" cy="12" r="3"/>
+              <path d="M12 1v6m0 6v6"/>
+              <path d="M4.22 4.22l4.24 4.24m2.12 2.12l4.24 4.24"/>
+              <path d="M1 12h6m6 0h6"/>
+              <path d="M4.22 19.78l4.24-4.24m2.12-2.12l4.24-4.24"/>
+            </svg>
+            <span>SYSTEM SETTINGS</span>
+          </motion.button>
+
+          <motion.button
             className={`nav-tab interactive ${activeTab === 'students' ? 'active' : ''}`}
             onClick={() => setActiveTab('students')}
             whileHover={{ scale: 1.05 }}
@@ -484,6 +505,18 @@ const SuperAdmin = () => {
               transition={{ duration: 0.3 }}
             >
               <GateAnalytics />
+            </motion.div>
+          )}
+
+          {activeTab === 'settings' && (
+            <motion.div
+              key="settings"
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 20 }}
+              transition={{ duration: 0.3 }}
+            >
+              <SystemSettings />
             </motion.div>
           )}
 

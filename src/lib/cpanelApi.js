@@ -315,11 +315,12 @@ export const cpanelApi = {
     })
   },
 
-  adminListGateEntries: async ({ entryDate, search, all = false, limit = 1000, offset = 0 } = {}) => {
+  adminListGateEntries: async ({ entryDate, search, paymentStatus, all = false, limit = 1000, offset = 0 } = {}) => {
     return request('/admin/gate-entries', {
       query: {
         entry_date: entryDate,
         search,
+        payment_status: paymentStatus,
         all: all ? 1 : 0,
         limit,
         offset
@@ -533,5 +534,32 @@ export const cpanelApi = {
 
   getGoogleWalletStatus: async () => {
     return request('/google-wallet/status')
+  },
+
+  // System Settings
+  getSystemSettings: async () => {
+    return request('/system-settings', {
+      query: { action: 'get_all' }
+    })
+  },
+
+  getSystemSetting: async (settingKey) => {
+    return request('/system-settings', {
+      query: { action: 'get', setting_key: settingKey }
+    })
+  },
+
+  updateSystemSetting: async (settingKey, settingValue) => {
+    return request('/system-settings', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      query: { action: 'update' },
+      body: JSON.stringify({
+        setting_key: settingKey,
+        setting_value: settingValue
+      })
+    })
   }
 }

@@ -345,8 +345,19 @@ function admin_gate_entries(): void
     try {
         $pdo = db();
 
+        // Ensure legacy databases include payment_status for analytics filtering.
+        try {
+            $paymentStatusColumn = $pdo->query("SHOW COLUMNS FROM gate_entry_records LIKE 'payment_status'")->fetch();
+            if (!$paymentStatusColumn) {
+                $pdo->exec("ALTER TABLE gate_entry_records ADD COLUMN payment_status ENUM('paid','not_paid') NULL DEFAULT NULL AFTER entry_method");
+            }
+        } catch (Throwable $migrationError) {
+            error_log('admin_gate_entries schema migration warning (payment_status): ' . $migrationError->getMessage());
+        }
+
         $entryDate = trim((string)($_GET['entry_date'] ?? ''));
         $search = trim((string)($_GET['search'] ?? ''));
+        $paymentStatus = strtolower(trim((string)($_GET['payment_status'] ?? '')));
         $allRecords = in_array(strtolower(trim((string)($_GET['all'] ?? '0'))), ['1', 'true', 'yes'], true);
 
         $limit = (int)($_GET['limit'] ?? 500);
@@ -374,6 +385,11 @@ function admin_gate_entries(): void
             $params[':search'] = '%' . strtoupper($search) . '%';
         }
 
+        if (in_array($paymentStatus, ['paid', 'not_paid'], true)) {
+            $where[] = 'COALESCE(payment_status, "not_paid") = :payment_status';
+            $params[':payment_status'] = $paymentStatus;
+        }
+
         $whereSql = '';
         if (!empty($where)) {
             $whereSql = ' WHERE ' . implode(' AND ', $where);
@@ -396,6 +412,7 @@ function admin_gate_entries(): void
                        entry_at,
                        entry_by,
                        entry_method,
+                  COALESCE(payment_status, "not_paid") AS payment_status,
                        created_at
                 FROM gate_entry_records'
              . $whereSql .
