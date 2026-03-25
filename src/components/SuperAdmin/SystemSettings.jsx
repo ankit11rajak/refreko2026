@@ -4,8 +4,14 @@ import { cpanelApi } from '../../lib/cpanelApi'
 import './SystemSettings.css'
 
 const LOCAL_GATE_PASS_VISIBILITY_KEY = 'system_settings_gate_pass_visibility_enabled'
+const LOCAL_PAYMENT_ACCEPTANCE_KEY = 'system_settings_payment_acceptance_enabled'
 
 const DEFAULT_SETTINGS = {
+  payment_acceptance_enabled: {
+    value: true,
+    type: 'boolean',
+    description: 'Enable or disable student payment submissions and Make Payment access'
+  },
   gate_pass_visibility_enabled: {
     value: false,
     type: 'boolean',
@@ -56,6 +62,11 @@ const persistGatePassVisibility = (settingKey, value) => {
   localStorage.setItem(LOCAL_GATE_PASS_VISIBILITY_KEY, value ? '1' : '0')
 }
 
+const persistPaymentAcceptance = (settingKey, value) => {
+  if (settingKey !== 'payment_acceptance_enabled') return
+  localStorage.setItem(LOCAL_PAYMENT_ACCEPTANCE_KEY, value ? '1' : '0')
+}
+
 const SystemSettings = () => {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -87,11 +98,21 @@ const SystemSettings = () => {
         if (typeof rawValue !== 'undefined') {
           persistGatePassVisibility('gate_pass_visibility_enabled', Boolean(rawValue))
         }
+        const paymentAcceptanceRaw = response.settings?.payment_acceptance_enabled?.value
+        if (typeof paymentAcceptanceRaw !== 'undefined') {
+          persistPaymentAcceptance('payment_acceptance_enabled', Boolean(paymentAcceptanceRaw))
+        }
       } else {
         setIsReadOnlyFallback(true)
         const localGatePassVisibility = localStorage.getItem(LOCAL_GATE_PASS_VISIBILITY_KEY) === '1'
+        const localPaymentAcceptanceRaw = localStorage.getItem(LOCAL_PAYMENT_ACCEPTANCE_KEY)
+        const localPaymentAcceptance = localPaymentAcceptanceRaw === null ? true : localPaymentAcceptanceRaw === '1'
         const fallbackSettings = {
           ...DEFAULT_SETTINGS,
+          payment_acceptance_enabled: {
+            ...DEFAULT_SETTINGS.payment_acceptance_enabled,
+            value: localPaymentAcceptance
+          },
           gate_pass_visibility_enabled: {
             ...DEFAULT_SETTINGS.gate_pass_visibility_enabled,
             value: localGatePassVisibility
@@ -105,8 +126,14 @@ const SystemSettings = () => {
       console.error('Error loading settings:', err)
       setIsReadOnlyFallback(true)
       const localGatePassVisibility = localStorage.getItem(LOCAL_GATE_PASS_VISIBILITY_KEY) === '1'
+      const localPaymentAcceptanceRaw = localStorage.getItem(LOCAL_PAYMENT_ACCEPTANCE_KEY)
+      const localPaymentAcceptance = localPaymentAcceptanceRaw === null ? true : localPaymentAcceptanceRaw === '1'
       const fallbackSettings = {
         ...DEFAULT_SETTINGS,
+        payment_acceptance_enabled: {
+          ...DEFAULT_SETTINGS.payment_acceptance_enabled,
+          value: localPaymentAcceptance
+        },
         gate_pass_visibility_enabled: {
           ...DEFAULT_SETTINGS.gate_pass_visibility_enabled,
           value: localGatePassVisibility
@@ -125,6 +152,7 @@ const SystemSettings = () => {
       const nextValue = !formData[settingKey]
       setFormData((prev) => ({ ...prev, [settingKey]: nextValue }))
       persistGatePassVisibility(settingKey, nextValue)
+      persistPaymentAcceptance(settingKey, nextValue)
       setSuccessMessage('Updated locally for preview. Backend sync is unavailable.')
       return
     }
@@ -139,6 +167,7 @@ const SystemSettings = () => {
       
       if (response?.success) {
         persistGatePassVisibility(settingKey, newValue)
+        persistPaymentAcceptance(settingKey, newValue)
         setSuccessMessage('Setting updated successfully')
         setTimeout(() => setSuccessMessage(''), 3000)
         // Reload settings to sync

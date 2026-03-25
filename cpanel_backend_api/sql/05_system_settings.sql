@@ -12,6 +12,7 @@ CREATE TABLE IF NOT EXISTS system_settings (
 
 -- Insert default settings
 INSERT INTO system_settings (setting_key, setting_value, setting_type, description) VALUES
+('payment_acceptance_enabled', '1', 'boolean', 'Enable or disable student payment submissions and Make Payment access'),
 ('gate_pass_visibility_enabled', '0', 'boolean', 'When enabled, all gate passes are visible on student dashboard regardless of payment status'),
 ('label_generation_enabled', '1', 'boolean', 'Enable/disable automatic label generation for gate entries')
 ON DUPLICATE KEY UPDATE updated_at = CURRENT_TIMESTAMP;

@@ -152,6 +152,24 @@ function resolve_payments_student_table(PDO $pdo): string
     return $fallback;
 }
 
+function payments_is_acceptance_enabled(PDO $pdo): bool
+{
+    ensure_system_settings_table($pdo);
+
+    $stmt = $pdo->prepare('SELECT setting_value
+                           FROM system_settings
+                           WHERE setting_key = :setting_key
+                           LIMIT 1');
+    $stmt->execute([':setting_key' => 'payment_acceptance_enabled']);
+    $rawValue = $stmt->fetchColumn();
+
+    if ($rawValue === false) {
+        return true;
+    }
+
+    return (int)$rawValue === 1;
+}
+
 function payments_list(): void
 {
     $status = trim((string)($_GET['status'] ?? ''));
@@ -225,6 +243,16 @@ function payments_list(): void
 
 function payments_submit_with_upload(): void
 {
+    $pdo = db();
+
+    if (!payments_is_acceptance_enabled($pdo)) {
+        json_response([
+            'success' => false,
+            'message' => 'Payment submissions are currently disabled by admin',
+            'code' => 'PAYMENT_ACCEPTANCE_DISABLED',
+        ], 403);
+    }
+
     $studentCode = strtoupper(trim((string)($_POST['student_code'] ?? '')));
     $studentName = trim((string)($_POST['student_name'] ?? ''));
     $email = trim((string)($_POST['email'] ?? ''));
@@ -271,7 +299,6 @@ function payments_submit_with_upload(): void
         $foodPreference = null;
     }
 
-    $pdo = db();
     $studentTable = resolve_payments_student_table($pdo);
     $pdo->beginTransaction();
 

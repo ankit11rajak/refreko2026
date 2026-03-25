@@ -403,6 +403,12 @@ function ensure_system_settings_table(PDO $pdo): void
 
     $defaults = [
         [
+            'setting_key' => 'payment_acceptance_enabled',
+            'setting_value' => '1',
+            'setting_type' => 'boolean',
+            'description' => 'Enable or disable student payment submissions and Make Payment access',
+        ],
+        [
             'setting_key' => 'gate_pass_visibility_enabled',
             'setting_value' => '0',
             'setting_type' => 'boolean',

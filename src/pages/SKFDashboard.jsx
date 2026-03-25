@@ -12,6 +12,7 @@ import './SKFDashboard.css'
 const GOOGLE_WALLET_TEMP_DISABLED = true
 const LOCAL_GATE_PASS_VISIBILITY_KEY = 'system_settings_gate_pass_visibility_enabled'
 const LOCAL_GATE_PASS_UNPAID_TERMS_REQUIRED_KEY = 'system_settings_gate_pass_unpaid_terms_required_enabled'
+const LOCAL_PAYMENT_ACCEPTANCE_KEY = 'system_settings_payment_acceptance_enabled'
 
 const getGatePassTermsAcceptanceKey = (studentId) => {
   const normalizedId = String(studentId || '').trim().toUpperCase()
@@ -68,6 +69,7 @@ const SKFDashboard = () => {
   const [todayGateEntry, setTodayGateEntry] = useState(null)
   const [gatePassVisibilityEnabled, setGatePassVisibilityEnabled] = useState(false)
   const [gatePassUnpaidTermsRequiredEnabled, setGatePassUnpaidTermsRequiredEnabled] = useState(true)
+  const [paymentAcceptanceEnabled, setPaymentAcceptanceEnabled] = useState(true)
   const [showGatePassTermsModal, setShowGatePassTermsModal] = useState(false)
   const [hasAcceptedGatePassTerms, setHasAcceptedGatePassTerms] = useState(false)
   const [gatePassTermsChecked, setGatePassTermsChecked] = useState(false)
@@ -293,8 +295,14 @@ const SKFDashboard = () => {
       try {
         const response = await cpanelApi.getSystemSettings()
         if (response?.success && response?.settings) {
+          const paymentAcceptance = response.settings.payment_acceptance_enabled
           const gatePassVisibility = response.settings.gate_pass_visibility_enabled
           const unpaidTermsRequired = response.settings.gate_pass_unpaid_terms_required_enabled
+          if (paymentAcceptance && typeof paymentAcceptance.value !== 'undefined') {
+            const nextValue = parseBoolish(paymentAcceptance.value)
+            setPaymentAcceptanceEnabled(nextValue)
+            localStorage.setItem(LOCAL_PAYMENT_ACCEPTANCE_KEY, nextValue ? '1' : '0')
+          }
           if (gatePassVisibility && typeof gatePassVisibility.value !== 'undefined') {
             const nextValue = parseBoolish(gatePassVisibility.value)
             setGatePassVisibilityEnabled(nextValue)
@@ -308,11 +316,16 @@ const SKFDashboard = () => {
         }
       } catch (error) {
         console.warn('Failed to load system settings:', error)
+        const fallbackPaymentAcceptanceRaw = localStorage.getItem(LOCAL_PAYMENT_ACCEPTANCE_KEY)
+        const fallbackPaymentAcceptance = fallbackPaymentAcceptanceRaw === null
+          ? true
+          : parseBoolish(fallbackPaymentAcceptanceRaw)
         const fallbackVisibility = parseBoolish(localStorage.getItem(LOCAL_GATE_PASS_VISIBILITY_KEY))
         const fallbackTermsRequiredRaw = localStorage.getItem(LOCAL_GATE_PASS_UNPAID_TERMS_REQUIRED_KEY)
         const fallbackTermsRequired = fallbackTermsRequiredRaw === null
           ? true
           : parseBoolish(fallbackTermsRequiredRaw)
+        setPaymentAcceptanceEnabled(fallbackPaymentAcceptance)
         setGatePassVisibilityEnabled(fallbackVisibility)
         setGatePassUnpaidTermsRequiredEnabled(fallbackTermsRequired)
       }
@@ -653,7 +666,7 @@ const SKFDashboard = () => {
   }
 
   const handleMakePayment = () => {
-    if (isPaymentCompleted) {
+    if (isPaymentCompleted || !paymentAcceptanceEnabled) {
       return
     }
 
@@ -667,7 +680,7 @@ const SKFDashboard = () => {
   }
 
   const handleProceedToPayment = () => {
-    if (isPaymentCompleted) {
+    if (isPaymentCompleted || !paymentAcceptanceEnabled) {
       return
     }
 
@@ -923,6 +936,9 @@ const SKFDashboard = () => {
                         Complete your registration by making the fest payment.
                         {isFoodIncluded ? ' Select your food preference and proceed to payment.' : ' Food is not included for this amount and payment opens directly.'}
                       </p>
+                      {!paymentAcceptanceEnabled && (
+                        <p className="payment-closed-note">Payment is currently disabled by admin. Please try again later.</p>
+                      )}
                       <div className="payment-highlight">
                         <div className="payment-amount">
                           <span className="amount-label">Registration Fee</span>
@@ -937,9 +953,15 @@ const SKFDashboard = () => {
                       <button
                         className="action-btn"
                         onClick={handleMakePayment}
-                        disabled={isPaymentCompleted}
+                        disabled={isPaymentCompleted || !paymentAcceptanceEnabled}
                       >
-                        <span>{isPaymentCompleted ? 'Payment Completed' : 'Make Payment'}</span>
+                        <span>
+                          {isPaymentCompleted
+                            ? 'Payment Completed'
+                            : paymentAcceptanceEnabled
+                              ? 'Make Payment'
+                              : 'Payment Closed'}
+                        </span>
                       </button>
                     </motion.div>
 

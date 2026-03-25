@@ -8,6 +8,14 @@ import { loadPaymentConfigWithApi } from '../lib/paymentConfigApi'
 import { cpanelApi } from '../lib/cpanelApi'
 import './PaymentGateway.css'
 
+const LOCAL_PAYMENT_ACCEPTANCE_KEY = 'system_settings_payment_acceptance_enabled'
+
+const parseBoolish = (value) => {
+  if (value === true || value === 1 || value === '1') return true
+  const normalized = String(value ?? '').trim().toLowerCase()
+  return ['true', 'yes', 'y', 'on'].includes(normalized)
+}
+
 const PaymentGateway = () => {
   const navigate = useNavigate()
   const [foodPreference, setFoodPreference] = useState('')
@@ -20,6 +28,7 @@ const PaymentGateway = () => {
   const [paymentScreenshotBase64, setPaymentScreenshotBase64] = useState(null)
   const [formError, setFormError] = useState('')
   const [isPaymentLocked, setIsPaymentLocked] = useState(false)
+  const [paymentAcceptanceEnabled, setPaymentAcceptanceEnabled] = useState(true)
   const [paymentConfig, setPaymentConfig] = useState(() => loadPaymentConfig())
   const [paymentQrCodeUrl, setPaymentQrCodeUrl] = useState('')
 
@@ -59,6 +68,46 @@ const PaymentGateway = () => {
 
   useEffect(() => {
     document.body.classList.add('system-cursor')
+
+    const checkPaymentAcceptance = async () => {
+      const fallbackRaw = localStorage.getItem(LOCAL_PAYMENT_ACCEPTANCE_KEY)
+      const fallbackEnabled = fallbackRaw === null ? true : parseBoolish(fallbackRaw)
+
+      if (!cpanelApi.isConfigured()) {
+        setPaymentAcceptanceEnabled(fallbackEnabled)
+        if (!fallbackEnabled) {
+          setIsPaymentLocked(true)
+          setFormError('Payment is currently disabled by admin.')
+          navigate('/dashboard', { replace: true })
+        }
+        return
+      }
+
+      try {
+        const response = await cpanelApi.getSystemSetting('payment_acceptance_enabled')
+        const enabled = response?.success
+          ? parseBoolish(response?.setting?.value)
+          : fallbackEnabled
+
+        localStorage.setItem(LOCAL_PAYMENT_ACCEPTANCE_KEY, enabled ? '1' : '0')
+        setPaymentAcceptanceEnabled(enabled)
+
+        if (!enabled) {
+          setIsPaymentLocked(true)
+          setFormError('Payment is currently disabled by admin.')
+          navigate('/dashboard', { replace: true })
+        }
+      } catch {
+        setPaymentAcceptanceEnabled(fallbackEnabled)
+        if (!fallbackEnabled) {
+          setIsPaymentLocked(true)
+          setFormError('Payment is currently disabled by admin.')
+          navigate('/dashboard', { replace: true })
+        }
+      }
+    }
+
+    checkPaymentAcceptance()
     
     // Load payment config from database (cross-device sync)
     const loadConfig = async () => {
@@ -215,6 +264,12 @@ const PaymentGateway = () => {
   }
 
   const handleConfirmPayment = async () => {
+    if (!paymentAcceptanceEnabled) {
+      setIsPaymentLocked(true)
+      setFormError('Payment is currently disabled by admin.')
+      return
+    }
+
     const normalizedUtr = utrNumber.trim()
     const currentStudentId = studentProfile?.studentId || ''
     const savedFoodPreference = localStorage.getItem('foodPreference')
