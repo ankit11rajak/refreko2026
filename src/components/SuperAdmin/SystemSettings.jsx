@@ -6,6 +6,12 @@ import './SystemSettings.css'
 const LOCAL_GATE_PASS_VISIBILITY_KEY = 'system_settings_gate_pass_visibility_enabled'
 const LOCAL_PAYMENT_ACCEPTANCE_KEY = 'system_settings_payment_acceptance_enabled'
 
+const parseBoolish = (value) => {
+  if (value === true || value === 1 || value === '1') return true
+  const normalized = String(value ?? '').trim().toLowerCase()
+  return ['true', 'yes', 'y', 'on'].includes(normalized)
+}
+
 const DEFAULT_SETTINGS = {
   payment_acceptance_enabled: {
     value: true,
@@ -96,11 +102,11 @@ const SystemSettings = () => {
         setFormData(mapSettingsToFormData(response.settings))
         const rawValue = response.settings?.gate_pass_visibility_enabled?.value
         if (typeof rawValue !== 'undefined') {
-          persistGatePassVisibility('gate_pass_visibility_enabled', Boolean(rawValue))
+          persistGatePassVisibility('gate_pass_visibility_enabled', parseBoolish(rawValue))
         }
         const paymentAcceptanceRaw = response.settings?.payment_acceptance_enabled?.value
         if (typeof paymentAcceptanceRaw !== 'undefined') {
-          persistPaymentAcceptance('payment_acceptance_enabled', Boolean(paymentAcceptanceRaw))
+          persistPaymentAcceptance('payment_acceptance_enabled', parseBoolish(paymentAcceptanceRaw))
         }
       } else {
         setIsReadOnlyFallback(true)

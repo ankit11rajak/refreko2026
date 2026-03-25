@@ -28,7 +28,7 @@ const PaymentGateway = () => {
   const [paymentScreenshotBase64, setPaymentScreenshotBase64] = useState(null)
   const [formError, setFormError] = useState('')
   const [isPaymentLocked, setIsPaymentLocked] = useState(false)
-  const [paymentAcceptanceEnabled, setPaymentAcceptanceEnabled] = useState(true)
+  const [paymentAcceptanceEnabled, setPaymentAcceptanceEnabled] = useState(false)
   const [paymentConfig, setPaymentConfig] = useState(() => loadPaymentConfig())
   const [paymentQrCodeUrl, setPaymentQrCodeUrl] = useState('')
 
@@ -71,7 +71,7 @@ const PaymentGateway = () => {
 
     const checkPaymentAcceptance = async () => {
       const fallbackRaw = localStorage.getItem(LOCAL_PAYMENT_ACCEPTANCE_KEY)
-      const fallbackEnabled = fallbackRaw === null ? true : parseBoolish(fallbackRaw)
+      const fallbackEnabled = fallbackRaw === null ? false : parseBoolish(fallbackRaw)
 
       if (!cpanelApi.isConfigured()) {
         setPaymentAcceptanceEnabled(fallbackEnabled)

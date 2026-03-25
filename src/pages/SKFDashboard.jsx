@@ -69,7 +69,7 @@ const SKFDashboard = () => {
   const [todayGateEntry, setTodayGateEntry] = useState(null)
   const [gatePassVisibilityEnabled, setGatePassVisibilityEnabled] = useState(false)
   const [gatePassUnpaidTermsRequiredEnabled, setGatePassUnpaidTermsRequiredEnabled] = useState(true)
-  const [paymentAcceptanceEnabled, setPaymentAcceptanceEnabled] = useState(true)
+  const [paymentAcceptanceEnabled, setPaymentAcceptanceEnabled] = useState(false)
   const [showGatePassTermsModal, setShowGatePassTermsModal] = useState(false)
   const [hasAcceptedGatePassTerms, setHasAcceptedGatePassTerms] = useState(false)
   const [gatePassTermsChecked, setGatePassTermsChecked] = useState(false)
@@ -302,6 +302,9 @@ const SKFDashboard = () => {
             const nextValue = parseBoolish(paymentAcceptance.value)
             setPaymentAcceptanceEnabled(nextValue)
             localStorage.setItem(LOCAL_PAYMENT_ACCEPTANCE_KEY, nextValue ? '1' : '0')
+          } else {
+            setPaymentAcceptanceEnabled(false)
+            localStorage.setItem(LOCAL_PAYMENT_ACCEPTANCE_KEY, '0')
           }
           if (gatePassVisibility && typeof gatePassVisibility.value !== 'undefined') {
             const nextValue = parseBoolish(gatePassVisibility.value)
@@ -318,7 +321,7 @@ const SKFDashboard = () => {
         console.warn('Failed to load system settings:', error)
         const fallbackPaymentAcceptanceRaw = localStorage.getItem(LOCAL_PAYMENT_ACCEPTANCE_KEY)
         const fallbackPaymentAcceptance = fallbackPaymentAcceptanceRaw === null
-          ? true
+          ? false
           : parseBoolish(fallbackPaymentAcceptanceRaw)
         const fallbackVisibility = parseBoolish(localStorage.getItem(LOCAL_GATE_PASS_VISIBILITY_KEY))
         const fallbackTermsRequiredRaw = localStorage.getItem(LOCAL_GATE_PASS_UNPAID_TERMS_REQUIRED_KEY)
