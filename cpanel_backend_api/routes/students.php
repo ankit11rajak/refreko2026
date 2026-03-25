@@ -316,6 +316,7 @@ function students_gate_pass_terms_report(): void
     foreach ($params as $paramKey => $paramValue) {
         $stmt->bindValue($paramKey, $paramValue, PDO::PARAM_STR);
     }
+    
     $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
     $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
     $stmt->execute();
