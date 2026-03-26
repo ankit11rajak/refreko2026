@@ -48,6 +48,8 @@ const GateVolunteerPortal = () => {
   const [isSubmittingEntry, setIsSubmittingEntry] = useState(false)
 
   const [scannerEnabled, setScannerEnabled] = useState(false)
+  const [cameraFacingMode, setCameraFacingMode] = useState('environment')
+  const [cameraSwitching, setCameraSwitching] = useState(false)
   const [scannerError, setScannerError] = useState('')
   const [imageScanLoading, setImageScanLoading] = useState(false)
   const [imageScanError, setImageScanError] = useState('')
@@ -267,21 +269,62 @@ const GateVolunteerPortal = () => {
     }
   }, [navigate])
 
-  const startScanner = async () => {
-    setScannerError('')
-
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({
+  const getCameraStream = async (preferredFacingMode) => {
+    const constraintsAttempts = [
+      {
         video: {
-          facingMode: { ideal: 'environment' },
+          facingMode: { exact: preferredFacingMode },
           width: { ideal: 1280 },
           height: { ideal: 720 }
         },
         audio: false
-      })
+      },
+      {
+        video: {
+          facingMode: { ideal: preferredFacingMode },
+          width: { ideal: 1280 },
+          height: { ideal: 720 }
+        },
+        audio: false
+      },
+      {
+        video: {
+          width: { ideal: 1280 },
+          height: { ideal: 720 }
+        },
+        audio: false
+      }
+    ]
+
+    let lastError = null
+    for (const constraints of constraintsAttempts) {
+      try {
+        return await navigator.mediaDevices.getUserMedia(constraints)
+      } catch (error) {
+        lastError = error
+      }
+    }
+
+    throw lastError || new Error('Camera is unavailable')
+  }
+
+  const startScanner = async (preferredFacingMode = cameraFacingMode) => {
+    setScannerError('')
+
+    try {
+      const stream = await getCameraStream(preferredFacingMode)
 
       mediaStreamRef.current = stream
       const [track] = stream.getVideoTracks()
+      const detectedFacingMode = String(track?.getSettings?.().facingMode || '').toLowerCase()
+      if (detectedFacingMode.includes('user')) {
+        setCameraFacingMode('user')
+      } else if (detectedFacingMode.includes('environment')) {
+        setCameraFacingMode('environment')
+      } else {
+        setCameraFacingMode(preferredFacingMode)
+      }
+
       if (track?.applyConstraints) {
         try {
           await track.applyConstraints({
@@ -385,6 +428,28 @@ const GateVolunteerPortal = () => {
     } catch (error) {
       setScannerError(error?.message || 'Camera access denied or unavailable')
       stopScanner()
+    }
+  }
+
+  const handleCameraSwitch = async () => {
+    if (cameraSwitching) {
+      return
+    }
+
+    const nextFacingMode = cameraFacingMode === 'environment' ? 'user' : 'environment'
+    setCameraFacingMode(nextFacingMode)
+    setScannerError('')
+
+    if (!scannerEnabled) {
+      return
+    }
+
+    setCameraSwitching(true)
+    stopScanner()
+    try {
+      await startScanner(nextFacingMode)
+    } finally {
+      setCameraSwitching(false)
     }
   }
 
@@ -766,8 +831,15 @@ const GateVolunteerPortal = () => {
           <div className="scan-tools">
             <p className="scan-tools-title">Scan Selection</p>
             <div className="scanner-actions">
-              <button type="button" className="gate-btn" onClick={startScanner} disabled={scannerEnabled}>Start Camera Scan</button>
-              <button type="button" className="gate-btn gate-btn-muted" onClick={stopScanner} disabled={!scannerEnabled}>Stop Camera</button>
+              <button type="button" className="gate-btn" onClick={() => startScanner()} disabled={scannerEnabled || cameraSwitching}>Start Camera Scan</button>
+              <button type="button" className="gate-btn gate-btn-muted" onClick={stopScanner} disabled={!scannerEnabled || cameraSwitching}>Stop Camera</button>
+              <button type="button" className="gate-btn" onClick={handleCameraSwitch} disabled={cameraSwitching || !scannerEnabled}>
+                {cameraSwitching
+                  ? 'Switching Camera...'
+                  : cameraFacingMode === 'environment'
+                    ? 'Switch To Front Camera'
+                    : 'Switch To Back Camera'}
+              </button>
               <button
                 type="button"
                 className="gate-btn"

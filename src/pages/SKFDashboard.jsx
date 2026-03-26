@@ -669,75 +669,31 @@ const SKFDashboard = () => {
   }
 
   const handleMakePayment = () => {
-    const openPaymentFlow = async () => {
-      if (isPaymentCompleted || !paymentAcceptanceEnabled) {
-        return
-      }
-
-      if (cpanelApi.isConfigured()) {
-        try {
-          const response = await cpanelApi.getSystemSetting('payment_acceptance_enabled')
-          const remoteEnabled = response?.success
-            ? parseBoolish(response?.setting?.value)
-            : paymentAcceptanceEnabled
-
-          setPaymentAcceptanceEnabled(remoteEnabled)
-          localStorage.setItem(LOCAL_PAYMENT_ACCEPTANCE_KEY, remoteEnabled ? '1' : '0')
-
-          if (!remoteEnabled) {
-            return
-          }
-        } catch {
-          // Keep local state fallback if API fetch fails.
-        }
-      }
-
-      if (isFoodIncluded) {
-        setShowFoodModal(true)
-        return
-      }
-
-      localStorage.setItem('foodPreference', 'null')
-      navigate('/payment-gateway')
+    if (isPaymentCompleted || !paymentAcceptanceEnabled) {
+      return
     }
 
-    openPaymentFlow()
+    if (isFoodIncluded) {
+      setShowFoodModal(true)
+      return
+    }
+
+    localStorage.setItem('foodPreference', 'null')
+    navigate('/payment-gateway')
   }
 
   const handleProceedToPayment = () => {
-    const continueToPayment = async () => {
-      if (isPaymentCompleted || !paymentAcceptanceEnabled) {
-        return
-      }
-
-      if (cpanelApi.isConfigured()) {
-        try {
-          const response = await cpanelApi.getSystemSetting('payment_acceptance_enabled')
-          const remoteEnabled = response?.success
-            ? parseBoolish(response?.setting?.value)
-            : paymentAcceptanceEnabled
-
-          setPaymentAcceptanceEnabled(remoteEnabled)
-          localStorage.setItem(LOCAL_PAYMENT_ACCEPTANCE_KEY, remoteEnabled ? '1' : '0')
-
-          if (!remoteEnabled) {
-            return
-          }
-        } catch {
-          // Keep local state fallback if API fetch fails.
-        }
-      }
-
-      if (foodPreference) {
-        // Save food preference to localStorage
-        localStorage.setItem('foodPreference', foodPreference)
-        setShowFoodModal(false)
-        // Navigate to payment gateway
-        navigate('/payment-gateway')
-      }
+    if (isPaymentCompleted || !paymentAcceptanceEnabled) {
+      return
     }
 
-    continueToPayment()
+    if (foodPreference) {
+      // Save food preference to localStorage
+      localStorage.setItem('foodPreference', foodPreference)
+      setShowFoodModal(false)
+      // Navigate to payment gateway
+      navigate('/payment-gateway')
+    }
   }
 
   const handleFoodSelect = (preference) => {
