@@ -27,6 +27,7 @@ const GateVolunteerPortal = () => {
 
   const token = localStorage.getItem('staffToken') || ''
   const staffRole = (localStorage.getItem('staffRole') || '').toLowerCase()
+  const staffUsername = localStorage.getItem('staffUsername') || ''
   const staffName = localStorage.getItem('staffName') || localStorage.getItem('staffUsername') || 'Volunteer'
 
   const [isLoading, setIsLoading] = useState(true)
@@ -144,6 +145,26 @@ const GateVolunteerPortal = () => {
     () => typeof window !== 'undefined' && 'BarcodeDetector' in window,
     []
   )
+
+  const getEntryByDisplayName = (row) => {
+    const explicitName = String(
+      row?.entry_by_name
+      || row?.staff_name
+      || row?.volunteer_name
+      || ''
+    ).trim()
+
+    if (explicitName) {
+      return explicitName
+    }
+
+    const entryBy = String(row?.entry_by || '').trim()
+    if (entryBy && staffUsername && entryBy.toLowerCase() === staffUsername.toLowerCase()) {
+      return staffName
+    }
+
+    return entryBy || '-'
+  }
 
   const clearSession = () => {
     localStorage.removeItem('staffAuthenticated')
@@ -656,7 +677,7 @@ const GateVolunteerPortal = () => {
         <td>${escapeHtml(row.student_department || '-')}</td>
         <td>${escapeHtml(row.student_year || '-')}</td>
         <td>${escapeHtml(row.entry_method)}</td>
-        <td>${escapeHtml(row.entry_by)}</td>
+        <td>${escapeHtml(getEntryByDisplayName(row))}</td>
       </tr>
     `).join('')
 
@@ -765,7 +786,7 @@ const GateVolunteerPortal = () => {
           row.student_department || '-',
           row.student_year || '-',
           row.entry_method || '',
-          row.entry_by || ''
+          getEntryByDisplayName(row)
         ]),
         styles: { fontSize: 8, cellPadding: 4 },
         headStyles: { fillColor: [74, 20, 140] }
@@ -1080,7 +1101,7 @@ const GateVolunteerPortal = () => {
                     <td>{record.student_department || '-'}</td>
                     <td>{record.student_year || '-'}</td>
                     <td>{record.entry_method}</td>
-                    <td>{record.entry_by}</td>
+                    <td>{getEntryByDisplayName(record)}</td>
                   </tr>
                 ))}
               </tbody>
