@@ -1150,7 +1150,7 @@ const SKFDashboard = () => {
                     <div className="today-access-granted-card">
                       <h3>your today access was granted.</h3>
                       <p>
-                        Entry Time: <strong>{todayGateEntry.entry_at || '-'}</strong> | Method: <strong>{todayGateEntry.entry_method || '-'}</strong> | Verified By: <strong>{todayGateEntry.entry_by_name || todayGateEntry.entry_by || '-'}</strong>
+                        Entry Time: <strong>{todayGateEntry.entry_at || '-'}</strong> | Method: <strong>{todayGateEntry.entry_method || '-'}</strong> | Verified By: <strong>{todayGateEntry.entry_by_name || todayGateEntry.volunteer_name || todayGateEntry.staff_name || todayGateEntry.verified_by_name || todayGateEntry.entry_by || '-'}</strong>
                       </p>
                     </div>
                   ) : null}

@@ -504,8 +504,8 @@ function students_gate_entry_today(): void
         $fromSql = ' FROM gate_entry_records ger';
         $entryByNameExpr = 'ger.entry_by';
         if ($hasStaffUsersTable) {
-                $fromSql .= ' LEFT JOIN event_staff_users esu ON LOWER(TRIM(esu.username)) = LOWER(TRIM(ger.entry_by))';
-                $entryByNameExpr = 'COALESCE(esu.full_name, ger.entry_by)';
+            $fromSql .= ' LEFT JOIN event_staff_users esu ON LOWER(TRIM(esu.username)) = LOWER(TRIM(ger.entry_by))';
+            $entryByNameExpr = 'COALESCE(NULLIF(TRIM(esu.full_name), ""), ger.entry_by)';
         }
 
         $stmt = $pdo->prepare('SELECT ger.id,
@@ -517,6 +517,8 @@ function students_gate_entry_today(): void
                                                                     ger.entry_at,
                                                                     ger.entry_by,
                                                                     ' . $entryByNameExpr . ' AS entry_by_name,
+                                                                    ' . $entryByNameExpr . ' AS volunteer_name,
+                                                                    ' . $entryByNameExpr . ' AS staff_name,
                                                                     ger.entry_method'
                                                      . $fromSql .
                                                      ' WHERE UPPER(TRIM(ger.student_code)) = :student_code
