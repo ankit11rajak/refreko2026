@@ -12,6 +12,7 @@ const normalizePaymentStatus = (value) => {
 }
 
 const formatPaymentStatus = (value) => normalizePaymentStatus(value) === 'paid' ? 'PAID' : 'NOT PAID'
+const formatEntryBy = (row) => String(row?.entry_by_name || row?.entry_by || '-').trim() || '-'
 
 const GateAnalytics = () => {
   const [entryDate, setEntryDate] = useState(todayIsoDate())
@@ -74,7 +75,7 @@ const GateAnalytics = () => {
         row?.student_name,
         row?.student_department,
         row?.student_year,
-        row?.entry_by,
+        formatEntryBy(row),
         row?.entry_method,
         row?.entry_date,
         formatPaymentStatus(row?.payment_status),
@@ -223,7 +224,7 @@ const GateAnalytics = () => {
           row?.student_name,
           row?.student_department,
           row?.student_year,
-          row?.entry_by,
+          formatEntryBy(row),
           row?.entry_method,
           row?.entry_date,
           formatPaymentStatus(row?.payment_status),
@@ -249,7 +250,7 @@ const GateAnalytics = () => {
         row.student_year || '-',
         formatPaymentStatus(row.payment_status),
         row.entry_method,
-        row.entry_by
+        formatEntryBy(row)
       ].map(csvEscape).join(',')))
 
       const content = [headers.join(','), ...lines].join('\n')
@@ -300,7 +301,7 @@ const GateAnalytics = () => {
           row?.student_name,
           row?.student_department,
           row?.student_year,
-          row?.entry_by,
+          formatEntryBy(row),
           row?.entry_method,
           row?.entry_date,
           formatPaymentStatus(row?.payment_status),
@@ -332,7 +333,7 @@ const GateAnalytics = () => {
           row.student_year || '-',
           formatPaymentStatus(row.payment_status),
           row.entry_method || '',
-          row.entry_by || ''
+          formatEntryBy(row)
         ]),
         styles: { fontSize: 8, cellPadding: 4 },
         headStyles: { fillColor: [74, 20, 140] }
@@ -462,7 +463,7 @@ const GateAnalytics = () => {
                   </span>
                 </td>
                 <td>{record.entry_method || '-'}</td>
-                <td>{record.entry_by || '-'}</td>
+                <td>{formatEntryBy(record)}</td>
                 <td>
                   <button
                     type="button"

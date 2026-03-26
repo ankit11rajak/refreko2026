@@ -1,5 +1,16 @@
 <?php
 
+function students_table_exists(PDO $pdo, string $tableName): bool
+{
+    if (!preg_match('/^[a-zA-Z0-9_]+$/', $tableName)) {
+        return false;
+    }
+
+    $sql = sprintf('SHOW TABLES LIKE %s', $pdo->quote($tableName));
+    $stmt = $pdo->query($sql);
+    return $stmt ? (bool)$stmt->fetch() : false;
+}
+
 function boolish_to_int($value): int
 {
     if (is_bool($value)) {
@@ -489,20 +500,29 @@ function students_gate_entry_today(): void
     $pdo = db();
     $today = (new DateTimeImmutable('now', new DateTimeZone('Asia/Kolkata')))->format('Y-m-d');
 
-    $stmt = $pdo->prepare('SELECT id,
-                                  student_code,
-                                  student_name,
-                                  student_department,
-                                  student_year,
-                                  entry_date,
-                                  entry_at,
-                                  entry_by,
-                                  entry_method
-                           FROM gate_entry_records
-                           WHERE UPPER(TRIM(student_code)) = :student_code
-                             AND entry_date = :entry_date
-                           ORDER BY entry_at DESC, id DESC
-                           LIMIT 1');
+        $hasStaffUsersTable = students_table_exists($pdo, 'event_staff_users');
+        $fromSql = ' FROM gate_entry_records ger';
+        $entryByNameExpr = 'ger.entry_by';
+        if ($hasStaffUsersTable) {
+                $fromSql .= ' LEFT JOIN event_staff_users esu ON LOWER(TRIM(esu.username)) = LOWER(TRIM(ger.entry_by))';
+                $entryByNameExpr = 'COALESCE(esu.full_name, ger.entry_by)';
+        }
+
+        $stmt = $pdo->prepare('SELECT ger.id,
+                                                                    ger.student_code,
+                                                                    ger.student_name,
+                                                                    ger.student_department,
+                                                                    ger.student_year,
+                                                                    ger.entry_date,
+                                                                    ger.entry_at,
+                                                                    ger.entry_by,
+                                                                    ' . $entryByNameExpr . ' AS entry_by_name,
+                                                                    ger.entry_method'
+                                                     . $fromSql .
+                                                     ' WHERE UPPER(TRIM(ger.student_code)) = :student_code
+                                                         AND ger.entry_date = :entry_date
+                                                     ORDER BY ger.entry_at DESC, ger.id DESC
+                                                     LIMIT 1');
     $stmt->execute([
         ':student_code' => $studentCode,
         ':entry_date' => $today,

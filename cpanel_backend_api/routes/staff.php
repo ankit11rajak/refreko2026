@@ -291,19 +291,22 @@ function get_gate_student(PDO $pdo, string $studentCode): ?array
 
 function has_gate_entry_for_date(PDO $pdo, string $studentCode, string $entryDate): ?array
 {
-        $stmt = $pdo->prepare('SELECT student_code,
-                                                                    student_name,
-                                                                    student_department,
-                                                                    student_year,
-                                                                    entry_date,
-                                                                    entry_at,
-                                                                    entry_by,
-                                                                                                                                        entry_method,
-                                                                                                                                        payment_status
-                           FROM gate_entry_records
-                           WHERE student_code = :student_code
-                             AND entry_date = :entry_date
-                           LIMIT 1');
+                $stmt = $pdo->prepare('SELECT ger.student_code,
+                                                                                                                                        ger.student_name,
+                                                                                                                                        ger.student_department,
+                                                                                                                                        ger.student_year,
+                                                                                                                                        ger.entry_date,
+                                                                                                                                        ger.entry_at,
+                                                                                                                                        ger.entry_by,
+                                                                                                                                        COALESCE(esu.full_name, ger.entry_by) AS entry_by_name,
+                                                                                                                                                                                                                                                                                ger.entry_method,
+                                                                                                                                                                                                                                                                                ger.payment_status
+                                                     FROM gate_entry_records ger
+                                                     LEFT JOIN event_staff_users esu
+                                                         ON LOWER(TRIM(esu.username)) = LOWER(TRIM(ger.entry_by))
+                                                     WHERE ger.student_code = :student_code
+                                                         AND ger.entry_date = :entry_date
+                                                     LIMIT 1');
     $stmt->execute([
         ':student_code' => strtoupper(trim($studentCode)),
         ':entry_date' => $entryDate,
@@ -379,16 +382,19 @@ function staff_gate_volunteer_search(): void
 
     $today = gate_entry_today_utc();
 
-    $todayEntryStmt = $pdo->prepare('SELECT student_code,
-                                            student_name,
-                                            student_department,
-                                            student_year,
-                                            entry_date,
-                                            entry_at,
-                                            entry_by,
-                                            entry_method
-                                     FROM gate_entry_records
-                                     WHERE entry_date = :entry_date');
+        $todayEntryStmt = $pdo->prepare('SELECT ger.student_code,
+                                                                                        ger.student_name,
+                                                                                        ger.student_department,
+                                                                                        ger.student_year,
+                                                                                        ger.entry_date,
+                                                                                        ger.entry_at,
+                                                                                        ger.entry_by,
+                                                                                        COALESCE(esu.full_name, ger.entry_by) AS entry_by_name,
+                                                                                        ger.entry_method
+                                                                         FROM gate_entry_records ger
+                                                                         LEFT JOIN event_staff_users esu
+                                                                             ON LOWER(TRIM(esu.username)) = LOWER(TRIM(ger.entry_by))
+                                                                         WHERE ger.entry_date = :entry_date');
     $todayEntryStmt->execute([':entry_date' => $today]);
     $todayEntryRows = $todayEntryStmt->fetchAll();
     $todayEntryMap = [];
@@ -507,34 +513,40 @@ function staff_gate_volunteer_entries(): void
     $limit = max(1, min(50000, $limit));
 
     if ($allRecords) {
-        $stmt = $pdo->prepare('SELECT id,
-                                      student_code,
-                                      student_name,
-                                      student_department,
-                                      student_year,
-                                      entry_date,
-                                      entry_at,
-                                      entry_by,
-                                      entry_method,
-                                      payment_status
-                               FROM gate_entry_records
-                               ORDER BY entry_date DESC, entry_at DESC
-                               LIMIT :limit');
+                $stmt = $pdo->prepare('SELECT ger.id,
+                                                                            ger.student_code,
+                                                                            ger.student_name,
+                                                                            ger.student_department,
+                                                                            ger.student_year,
+                                                                            ger.entry_date,
+                                                                            ger.entry_at,
+                                                                            ger.entry_by,
+                                                                            COALESCE(esu.full_name, ger.entry_by) AS entry_by_name,
+                                                                            ger.entry_method,
+                                                                            ger.payment_status
+                                                             FROM gate_entry_records ger
+                                                             LEFT JOIN event_staff_users esu
+                                                                 ON LOWER(TRIM(esu.username)) = LOWER(TRIM(ger.entry_by))
+                                                             ORDER BY ger.entry_date DESC, ger.entry_at DESC
+                                                             LIMIT :limit');
     } else {
-        $stmt = $pdo->prepare('SELECT id,
-                                      student_code,
-                                      student_name,
-                                      student_department,
-                                      student_year,
-                                      entry_date,
-                                      entry_at,
-                                      entry_by,
-                                      entry_method,
-                                      payment_status
-                               FROM gate_entry_records
-                               WHERE entry_date = :entry_date
-                               ORDER BY entry_at DESC
-                               LIMIT :limit');
+                $stmt = $pdo->prepare('SELECT ger.id,
+                                                                            ger.student_code,
+                                                                            ger.student_name,
+                                                                            ger.student_department,
+                                                                            ger.student_year,
+                                                                            ger.entry_date,
+                                                                            ger.entry_at,
+                                                                            ger.entry_by,
+                                                                            COALESCE(esu.full_name, ger.entry_by) AS entry_by_name,
+                                                                            ger.entry_method,
+                                                                            ger.payment_status
+                                                             FROM gate_entry_records ger
+                                                             LEFT JOIN event_staff_users esu
+                                                                 ON LOWER(TRIM(esu.username)) = LOWER(TRIM(ger.entry_by))
+                                                             WHERE ger.entry_date = :entry_date
+                                                             ORDER BY ger.entry_at DESC
+                                                             LIMIT :limit');
         $stmt->bindValue(':entry_date', $entryDate, PDO::PARAM_STR);
     }
 
@@ -649,6 +661,9 @@ function staff_gate_volunteer_mark_entry(): void
             'entry_date' => $entryDate,
             'entry_at' => $entryAt,
             'entry_by' => (string)($staff['username'] ?? 'volunteer'),
+            'entry_by_name' => trim((string)($staff['full_name'] ?? '')) !== ''
+                ? trim((string)$staff['full_name'])
+                : (string)($staff['username'] ?? 'volunteer'),
             'entry_method' => $entryMethod,
             'payment_status' => (string)($student['payment_status'] ?? 'not_paid'),
         ],

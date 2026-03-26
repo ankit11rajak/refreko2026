@@ -1,5 +1,16 @@
 <?php
 
+function admin_table_exists(PDO $pdo, string $tableName): bool
+{
+    if (!preg_match('/^[a-zA-Z0-9_]+$/', $tableName)) {
+        return false;
+    }
+
+    $sql = sprintf('SHOW TABLES LIKE %s', $pdo->quote($tableName));
+    $stmt = $pdo->query($sql);
+    return $stmt ? (bool)$stmt->fetch() : false;
+}
+
 function admin_login(): void
 {
     $payload = get_json_input();
@@ -364,6 +375,14 @@ function admin_gate_entries(): void
         $offset = (int)($_GET['offset'] ?? 0);
         $limit = max(1, min(50000, $limit));
         $offset = max(0, $offset);
+        $hasStaffUsersTable = admin_table_exists($pdo, 'event_staff_users');
+
+        $fromSql = ' FROM gate_entry_records g';
+        $entryByNameExpr = 'g.entry_by';
+        if ($hasStaffUsersTable) {
+            $fromSql .= ' LEFT JOIN event_staff_users s ON LOWER(TRIM(s.username)) = LOWER(TRIM(g.entry_by))';
+            $entryByNameExpr = 'COALESCE(s.full_name, g.entry_by)';
+        }
 
         $where = [];
         $params = [];
@@ -372,21 +391,22 @@ function admin_gate_entries(): void
             if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $entryDate) !== 1) {
                 json_response(['success' => false, 'message' => 'entry_date must be YYYY-MM-DD'], 422);
             }
-            $where[] = 'entry_date = :entry_date';
+            $where[] = 'g.entry_date = :entry_date';
             $params[':entry_date'] = $entryDate;
         }
 
         if ($search !== '') {
-            $where[] = '(UPPER(COALESCE(student_code, "")) LIKE :search
-                        OR UPPER(COALESCE(student_name, "")) LIKE :search
-                        OR UPPER(COALESCE(student_department, "")) LIKE :search
-                        OR UPPER(COALESCE(student_year, "")) LIKE :search
-                        OR UPPER(COALESCE(entry_by, "")) LIKE :search)';
+            $where[] = '(UPPER(COALESCE(g.student_code, "")) LIKE :search
+                        OR UPPER(COALESCE(g.student_name, "")) LIKE :search
+                        OR UPPER(COALESCE(g.student_department, "")) LIKE :search
+                        OR UPPER(COALESCE(g.student_year, "")) LIKE :search
+                        OR UPPER(COALESCE(g.entry_by, "")) LIKE :search
+                        OR UPPER(COALESCE(' . $entryByNameExpr . ', "")) LIKE :search)';
             $params[':search'] = '%' . strtoupper($search) . '%';
         }
 
         if (in_array($paymentStatus, ['paid', 'not_paid'], true)) {
-            $where[] = 'COALESCE(payment_status, "not_paid") = :payment_status';
+            $where[] = 'COALESCE(g.payment_status, "not_paid") = :payment_status';
             $params[':payment_status'] = $paymentStatus;
         }
 
@@ -395,7 +415,7 @@ function admin_gate_entries(): void
             $whereSql = ' WHERE ' . implode(' AND ', $where);
         }
 
-        $countStmt = $pdo->prepare('SELECT COUNT(*) AS total FROM gate_entry_records' . $whereSql);
+           $countStmt = $pdo->prepare('SELECT COUNT(*) AS total' . $fromSql . $whereSql);
         foreach ($params as $key => $value) {
             $countStmt->bindValue($key, $value, PDO::PARAM_STR);
         }
@@ -403,20 +423,21 @@ function admin_gate_entries(): void
         $countRow = $countStmt->fetch();
         $total = (int)($countRow['total'] ?? 0);
 
-        $sql = 'SELECT id,
-                       student_code,
-                       student_name,
-                       student_department,
-                       student_year,
-                       entry_date,
-                       entry_at,
-                       entry_by,
-                       entry_method,
-                  COALESCE(payment_status, "not_paid") AS payment_status,
-                       created_at
-                FROM gate_entry_records'
+           $sql = 'SELECT g.id,
+                       g.student_code,
+                       g.student_name,
+                       g.student_department,
+                       g.student_year,
+                       g.entry_date,
+                       g.entry_at,
+                       g.entry_by,
+                       ' . $entryByNameExpr . ' AS entry_by_name,
+                       g.entry_method,
+                   COALESCE(g.payment_status, "not_paid") AS payment_status,
+                       g.created_at'
+               . $fromSql
              . $whereSql .
-               ' ORDER BY entry_date DESC, entry_at DESC
+                ' ORDER BY g.entry_date DESC, g.entry_at DESC
                  LIMIT :limit OFFSET :offset';
 
         $stmt = $pdo->prepare($sql);
