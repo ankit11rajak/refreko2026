@@ -20,6 +20,7 @@ const GateVolunteerPortal = () => {
   const mediaStreamRef = useRef(null)
   const scanCanvasRef = useRef(null)
   const isDecodingRef = useRef(false)
+  const isScanProcessingRef = useRef(false)
   const zxingReaderRef = useRef(null)
   const zxingControlsRef = useRef(null)
   const uploadInputRef = useRef(null)
@@ -358,17 +359,25 @@ const GateVolunteerPortal = () => {
         try {
           zxingControlsRef.current = await zxingReaderRef.current.decodeFromVideoElement(
             videoRef.current,
-            (result) => {
+            async (result) => {
+              if (isScanProcessingRef.current) {
+                return
+              }
+
               const scannedRaw = String(result?.getText?.() || '').trim()
               if (!scannedRaw) {
                 return
               }
 
-              setQrInput(scannedRaw)
-              setEntryMessage('QR captured. Checking student record in DB...')
-              setEntryError('')
-              resolveDetectedStudent({ qrData: scannedRaw, studentCode: '', autoGrant: true })
-              stopScanner()
+              isScanProcessingRef.current = true
+              try {
+                setQrInput(scannedRaw)
+                setEntryMessage('QR captured. Checking student record in DB...')
+                setEntryError('')
+                await resolveDetectedStudent({ qrData: scannedRaw, studentCode: '', autoGrant: true })
+              } finally {
+                isScanProcessingRef.current = false
+              }
             }
           )
           return
@@ -413,11 +422,19 @@ const GateVolunteerPortal = () => {
           }
 
           if (scannedRaw) {
+            if (isScanProcessingRef.current) {
+              return
+            }
+
+            isScanProcessingRef.current = true
             setQrInput(scannedRaw)
             setEntryMessage('QR captured. Checking student record in DB...')
             setEntryError('')
-            await resolveDetectedStudent({ qrData: scannedRaw, studentCode: '', autoGrant: true })
-            stopScanner()
+            try {
+              await resolveDetectedStudent({ qrData: scannedRaw, studentCode: '', autoGrant: true })
+            } finally {
+              isScanProcessingRef.current = false
+            }
           }
         } catch {
           // Keep scanning loop running.
