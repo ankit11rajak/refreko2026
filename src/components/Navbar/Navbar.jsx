@@ -103,13 +103,6 @@ const Navbar = () => {
                   transition={{ duration: 0.2 }}
                 >
                   <Link
-                    to="/login/student"
-                    className="login-dropdown-item interactive"
-                    onClick={() => setShowLoginMenu(false)}
-                  >
-                    Student Login
-                  </Link>
-                  <Link
                     to="/login/admin"
                     className="login-dropdown-item interactive"
                     onClick={() => setShowLoginMenu(false)}

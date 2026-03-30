@@ -1,6 +1,6 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
-import { BrowserRouter, Route, Routes } from 'react-router-dom'
+import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import './index.css'
 import App from './App.jsx'
 import Login from './pages/Login.jsx'
@@ -73,8 +73,8 @@ const renderApp = () => {
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<App />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/login/student" element={<Login />} />
+          <Route path="/login" element={<Navigate to="/login/admin" replace />} />
+          <Route path="/login/student" element={<Navigate to="/login/admin?studentDisabled=1" replace />} />
           <Route path="/login/admin" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route path="/admin" element={<Admin />} />

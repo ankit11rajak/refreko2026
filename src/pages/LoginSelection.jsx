@@ -3,7 +3,7 @@ import { motion } from 'framer-motion'
 import './Login.css'
 
 const LoginSelection = () => {
-  const isStudentLoginDisabled = false
+  const isStudentLoginDisabled = true
   const isAdminLoginDisabled = false
 
   const blockStudentLoginNavigation = (event) => {

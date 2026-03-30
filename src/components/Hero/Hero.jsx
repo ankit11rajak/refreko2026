@@ -95,11 +95,11 @@ const Hero = () => {
           </div>
           
           <div className="cta-group">
-            <Link to="/login" className="btn-secondary magnetic-btn glass interactive">
-              <span>SKF STUDENT LOGIN</span>
+            <Link to="/login/admin" className="btn-secondary magnetic-btn glass interactive">
+              <span>ADMIN LOGIN</span>
             </Link>
             <p className="cta-description">
-              Already an SKF student? Login here
+              Admin access portal
             </p>
           </div>
         </motion.div>

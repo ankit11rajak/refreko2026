@@ -14,7 +14,9 @@ const parseBoolish = (value) => {
 const Login = () => {
   const navigate = useNavigate()
   const location = useLocation()
-  const isAdminLoginMode = location.pathname.endsWith('/admin') || new URLSearchParams(location.search).get('role') === 'admin'
+  const searchParams = new URLSearchParams(location.search)
+  const isAdminLoginMode = location.pathname.endsWith('/admin') || searchParams.get('role') === 'admin'
+  const isStudentLoginDisabledNotice = searchParams.get('studentDisabled') === '1'
   const isLoginDisabled = false
   const [formData, setFormData] = useState({
     email: '',
@@ -22,6 +24,20 @@ const Login = () => {
   })
   const [error, setError] = useState('')
   const [isLoading, setIsLoading] = useState(false)
+  const [showStudentDisabledPopup, setShowStudentDisabledPopup] = useState(false)
+
+  useEffect(() => {
+    if (isStudentLoginDisabledNotice) {
+      setShowStudentDisabledPopup(true)
+    }
+  }, [isStudentLoginDisabledNotice])
+
+  const handleCloseStudentDisabledPopup = () => {
+    setShowStudentDisabledPopup(false)
+    if (isStudentLoginDisabledNotice) {
+      navigate('/login/admin', { replace: true })
+    }
+  }
 
   useEffect(() => {
     document.body.classList.add('system-cursor')
@@ -68,6 +84,12 @@ const Login = () => {
     setError('')
 
     try {
+      if (!isAdminLoginMode) {
+        setError('Student login is currently disabled. Please use admin or staff login.')
+        setIsLoading(false)
+        return
+      }
+
       // Save admin accounts before clearing (needed for fallback auth)
       const savedAdminAccounts = localStorage.getItem('adminAccounts')
       const savedPaymentConfig = localStorage.getItem('paymentGatewayConfig')
@@ -212,6 +234,28 @@ const Login = () => {
 
   return (
     <div className="auth-page">
+      {showStudentDisabledPopup && (
+        <motion.div
+          className="login-disabled-popup-overlay"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+        >
+          <motion.div
+            className="login-disabled-popup"
+            initial={{ opacity: 0, scale: 0.95, y: 12 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            transition={{ duration: 0.2 }}
+          >
+            <h3>Notice</h3>
+            <p>Student login has been disabled.</p>
+            <button type="button" className="auth-btn" onClick={handleCloseStudentDisabledPopup}>
+              <span>OK</span>
+            </button>
+          </motion.div>
+        </motion.div>
+      )}
+
       <div className="hex-grid-overlay" />
       
       <Link to="/" className="back-home">
